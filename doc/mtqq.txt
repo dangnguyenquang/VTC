@@ -1,0 +1,62 @@
+axios mqtt uuid crypto
+
+sv api
+
+mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "server/P00028/data" -m "RS485-0-01040002018F0"
+
+1. kind: 2, st: 2 -> no data & không có kết nối
+2. alive -> kind: 2 st: 1 (RS485-0-01040002018F0)
+3. báo cháy -> kind: 1 st:1 (RS485-0-0104000101D930)
+4. lỗi -> kind: 1, st: 2 (RS485-0-01040001029931) 
+5. đã xử lý -> kind: 1 st:3 (RS485-0-010400010358F1)
+...
+RS485-0-01040002018F0
+RS485-0-010400000101305A
+RS485-0-01040000020130AA
+
+PING
+device/id/cmd
+
+server: 
+10.200.0.199
+administrator/S3MdpiFVRh3vBD5GKAyg
+
+11: chay
+12: loi
+13: binh thuong
+21: on
+22: mat
+
+Chỉ được 12345
+
+TEST CASES:
+III. 
+    1. Nhận bản tin từ quản lý thiết bị: (Đã hoàn thành với kind: 1, 2)
+        Các chuỗi mqtt:
+        Ví dụ: Kind: 1, State: 1 (RS485-0-01040002018F0)
+    2. Đồng bộ thiết bị (Đã hoàn thành): Chỉ cần chạy file apidevice.js -> từ gửi req lên server
+IV.
+    1. Chưa hoàn thành
+    2. Kích hoạt/ ngưng dịch vụ (Có thể chạy được): Set cứng res 
+        Mẫu JSON (POST):
+        {
+            "requestId":"c96981a9-d488-477d-9079-57ce3581b34d",
+            "deviceId": "P00028",
+            "status":0
+        }
+    3. Thông tin thiết bị (Có thể chạy được): 
+        Chạy được trường hợp không nhận thông tin gì từ thiết bị trong 10s (không có thông tin gửi về)
+        Chạy được trường hợp cháy, bình thường, lỗi (có thông tin gửi về)
+        Mẫu key (GET): ?requestId=c96981a9-d488-477d-9079-57ce3581b34d&deviceId=S123456
+    4. Chưa hoàn thành
+    5. Gửi yêu cầu xuống thiết bị
+        Chạy được trường hợp không nhận thông tin gì từ thiết bị trong 3s (không có thông tin gửi về)
+        Chạy được trường hợp sign không hợp lệ
+        Chạy được trường hợp lỗi khi giao tiếp với mqtt-broker
+        Chạy được trường hợp thiết bị còn sống (PING)
+        Mẫu key (GET): ?requestId=c96981a9-d488-477d-9079-57ce3581b34d&&deviceId=D123456&action=tindinhky&sign=xxxx
+        Với: 
+            ScretKey = "ScretKey"
+            sign = SHA256({deviceId}{requestId}{ScretKey})
+    6. Chưa hoàn thành
+
