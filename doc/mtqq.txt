@@ -60,3 +60,4 @@ IV.
             sign = SHA256({deviceId}{requestId}{ScretKey})
     6. Chưa hoàn thành
 
+test
