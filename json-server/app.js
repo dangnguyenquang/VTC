@@ -3,7 +3,9 @@ const server = jsonServer.create();
 const middlewares = jsonServer.defaults();
 const crypto = require('crypto');
 const mqtt = require('mqtt');
+const mongoose = require('mongoose');
 
+const db_url = 'mongodb://localhost:27017/VTC';
 const ScretKey = "ScretKey"; // VTC cung cấp
 const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
@@ -11,6 +13,18 @@ const mqtt_username = "guest";
 const mqtt_password = "123456a@";
 const topicToPublish = 'device/P00028/cmd';
 const topicToSubscribe = 'server/P00028/data';
+
+const deviceInfoSchema = new mongoose.Schema({
+    deviceID: String,
+    serialNumber: String,
+    IMEI: String,
+    ngaySanXuat: String,
+    feeStatus: String,
+    wifiSSID: String,
+    wifiPASS: String,
+    connectStatus: String,
+    interval: Number
+}, { collection: 'deviceInfo' });
 
 let timerId = null;
 
@@ -29,6 +43,77 @@ client.on('error', (error) => {
 });
 
 server.use(middlewares);
+server.get('/api/syncdevice', (req, res) => {
+
+    function faile_1(message, sentResponse) {
+        var resdev = [
+            {
+                "result": -1,
+                "message": message,
+                "data": null,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    function success_1(data, message, sentResponse) {
+        var resdev = [
+            {
+                "result": 1,
+                "message": message,
+                "data": data,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
+    var res_message;
+    mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
+    const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
+
+    DeviceInfo.find({})
+        .then(result => {
+            const total = result.length;
+            const data = {
+                "total": total,
+                "device": []
+            };
+
+            // POST thông tin từng thiết bị thông qua total
+            for (let i = 0; i < total; i++) {
+                var deviceId = `n_${result[i].deviceID.substring(1, 6)}`
+                var serial = result[i].serialNumber;
+                var IMEI = result[i].IMEI;
+                var ngaysanxuat = result[i].ngaySanXuat;
+                const newDevice = {
+                    "deviceId": deviceId,
+                    "serial": serial,
+                    "IMEI": IMEI,
+                    "ngaysanxuat": ngaysanxuat
+                };
+
+                data.device.push(newDevice);
+            }
+            res_message = "Thành công";
+            console.log(data);
+            success_1(data, res_message, sentResponse);
+            sentResponse = true;
+            mongoose.connection.close();
+        })
+        .catch(err => {
+            console.error(err);
+            res_message = "Lỗi khi kết nối với cơ sở dữ liệu" + err;
+            faile_1(res_message, sentResponse);
+            sentResponse = true;
+            mongoose.connection.close();
+        });
+});
+
 server.get('/requestdevice', (req, res) => {
 
     function faile_5(message, sentResponse) {
@@ -153,10 +238,10 @@ server.get('/api/deviceinfo', (req, res) => {
         const strmess = message.toString();
         var kind = parseInt(strmess.substring(16, 18));
         var state = parseInt(strmess.substring(18, 20));
-        
-        status = 1; 
 
-        if(kind === 2 && state === 1 || kind === 1 && state === 3) convertState = 1;
+        status = 1;
+
+        if (kind === 2 && state === 1 || kind === 1 && state === 3) convertState = 1;
         else if (kind === 1 && state === 1) convertState = 2;
         else convertState = 3;
 
@@ -168,7 +253,7 @@ server.get('/api/deviceinfo', (req, res) => {
             "state": convertState,
             "fee_status": 1,
             "ngaysanxuat": "22/02/2022",
-            "LastUpdated": "22/02/2022 22:22:22"        
+            "LastUpdated": "22/02/2022 22:22:22"
         }
         data.push(newData);
 
@@ -177,7 +262,7 @@ server.get('/api/deviceinfo', (req, res) => {
         sentResponse = true;
     });
 
-    
+
 });
 
 const PORT = 3000;
