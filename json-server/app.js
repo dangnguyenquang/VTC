@@ -189,12 +189,72 @@ server.get('/requestdevice', (req, res) => {
 });
 
 server.post('/api/active', (req, res) => {
-    res.json(
-        {
-            "result": 1,
-            "message": "Thành công",
+    function faile_2(message, sentResponse) {
+        var resdev = [
+            {
+                "result": -1,
+                "message": message,
+                "data": null,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
         }
+    }
+
+    function success_2(message, sentResponse) {
+        var resdev = [
+            {
+                "result": 1,
+                "message": message,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    var res_message;
+    var feeStatus;
+    var sentResponse = false;
+    const { requestId, deviceId, status } = req.body;
+    mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
+    const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
+
+    if (status === 0)
+        feeStatus = "Dang ky";
+    else if (status === 1)
+        feeStatus = "Kich hoat";
+    else if (status === 2)
+        feeStatus = "Ngung dich vu";
+    else if (status === 3)
+        feeStatus = "Huy dich vu";
+
+    DeviceInfo.findOneAndUpdate(
+        { deviceID: `P${deviceId.substring(2, 7)}` },
+        { $set: { feeStatus: feeStatus } },
+        { new: true }
     )
+        .then(updatedUser => {
+            if (updatedUser) {
+                console.log('Thành công');
+                res_message = "Thành công";
+                success_2(res_message, sentResponse);
+                sentResponse = true;
+                console.log(updatedUser);
+            } else {
+                console.log('Không tìm thấy deviceID');
+                res_message = "Không tìm thấy deviceID";
+                faile_2(res_message, sentResponse);
+                sentResponse = true;
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi khi cập nhật:', err);
+            res_message = err;
+            faile_2(res_message, sentResponse);
+            sentResponse = true;
+        });
 });
 
 server.get('/api/deviceinfo', (req, res) => {
@@ -309,7 +369,7 @@ server.post('/config', (req, res) => {
             { new: true }
         )
             .then(updatedUser => {
-                if (updatedUser){
+                if (updatedUser) {
                     console.log('Thành công');
                     res_message = "Thành công";
                     success_6(data, res_message, sentResponse);
@@ -333,7 +393,6 @@ server.post('/config', (req, res) => {
         faile_6(res_message, sentResponse);
         sentResponse = true;
     }
-
 });
 const PORT = 3000;
 server.listen(PORT, () => {
