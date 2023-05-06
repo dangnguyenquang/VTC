@@ -4,6 +4,7 @@ const middlewares = jsonServer.defaults();
 const crypto = require('crypto');
 const mqtt = require('mqtt');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 
 const db_url = 'mongodb://localhost:27017/VTC';
 const ScretKey = "ScretKey"; // VTC cung cấp
@@ -43,6 +44,7 @@ client.on('error', (error) => {
 });
 
 server.use(middlewares);
+server.use(bodyParser.json());
 server.get('/api/syncdevice', (req, res) => {
 
     function faile_1(message, sentResponse) {
@@ -149,8 +151,8 @@ server.get('/requestdevice', (req, res) => {
 
     var res_message;
 
-    const data = `${deviceId}${requestId}${ScretKey}`;
-    const check = crypto.createHash('sha256').update(data).digest('hex');
+    const sign_check = `${deviceId}${requestId}${ScretKey}`;
+    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
 
     var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
     if (sign === check) { // Kiểm tra tính hợp lệ của API
@@ -265,6 +267,74 @@ server.get('/api/deviceinfo', (req, res) => {
 
 });
 
+server.post('/config', (req, res) => {
+    function faile_6(message, sentResponse) {
+        var resdev = [
+            {
+                "result": -1,
+                "message": message,
+                "data": null,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    function success_6(data, message, sentResponse) {
+        var resdev = [
+            {
+                "result": 1,
+                "message": message,
+                "data": data,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    var res_message;
+    var sentResponse = false;
+    const { requestId, deviceId, action, data, sign } = req.body;
+    const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
+    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
+    if (sign === check) {
+        mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
+        const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
+
+        DeviceInfo.findOneAndUpdate(
+            { deviceID: `P${deviceId.substring(2, 7)}` },
+            { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
+            { new: true }
+        )
+            .then(updatedUser => {
+                if (updatedUser){
+                    console.log('Thành công');
+                    res_message = "Thành công";
+                    success_6(data, res_message, sentResponse);
+                    sentResponse = true;
+                    console.log(updatedUser);
+                } else {
+                    console.log('Không tìm thấy deviceID');
+                    res_message = "Không tìm thấy deviceID";
+                    faile_6(res_message, sentResponse);
+                    sentResponse = true;
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi cập nhật:', err);
+                res_message = err;
+                faile_6(res_message, sentResponse);
+                sentResponse = true;
+            });
+    } else {
+        res_message = "sign không hợp lệ";
+        faile_6(res_message, sentResponse);
+        sentResponse = true;
+    }
+
+});
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`JSON Server is running on port ${PORT}`);
