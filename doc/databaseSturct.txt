@@ -1,0 +1,24 @@
+cấu trúc data base:
+
+Tên database: VTC 
+Tên các collection: deviceInfo, deviceInfoHistory, deviceData
+	deviceInfo: thông tin hiện tại tất cả các device đang có ví dụ bên dưới:
+		{ 
+			"_id" : ObjectId("645321aa8026d56a9e0285aa"), 
+			"deviceID" : "P00027", 
+			"serial" : "00000", 
+			"IMEI" : "000000", 
+			"ngaysanxuat" : "25/12/2022", 
+			"fee_status" : "kichhoat", 
+			"wifiSSID" : "ngocbich", 
+			"wifiPASS" : "21240516", 
+			"trangthaiketnoi" : "4G", 
+			"interval" : 10 
+		}
+	devideInfoHistory là lịch sử thay đổi deviceInfo
+	deviceData là data nhận được từ thiết bị có dạng:
+		INPUT-1 (có cháy)
+		INPUT-0 (trạng thái bình thường)
+		BUTTO-1 (công tắc được nhấn)
+
+		thời gian gửi data cũng là một trường trong deviceData
