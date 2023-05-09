@@ -17,7 +17,7 @@ Tên các collection: deviceInfo, deviceInfoHistory, deviceData
 		}
 	devideInfoHistory là lịch sử thay đổi deviceInfo
 	deviceData là data nhận được từ thiết bị có dạng:
-		INPUT-1 (có cháy)
+		INPUT-1 (có cháy) (1,1)
 		INPUT-0 (trạng thái bình thường)
 		BUTTO-1 (công tắc được nhấn)
 
