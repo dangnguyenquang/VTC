@@ -10,7 +10,6 @@ mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t
 4. lỗi -> kind: 1, st: 2 (RS485-0-01040001029931) 
 5. đã xử lý -> kind: 1 st:3 (RS485-0-010400010358F1)
 ...
-RS485-0-01040002018F0
 RS485-0-010400000101305A
 RS485-0-01040000020130AA
 
