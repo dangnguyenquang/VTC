@@ -49,11 +49,11 @@ function sendMessageToAPI(data, api_url) {
 // Tự động lấy data từ db và gửi đi
 function fetchDataAndSendAPI(deviceId) {
   var state = 0;
-  const interval = 10000;
+  const interval = 600000;
   const now = new Date();
   const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-  DeviceData.findOne({ deviceID : deviceId})
+  DeviceData.findOne({ id : deviceId})
     .then(result => {
       if (now.getTime() - result.timestamp.getTime() <= interval){
         if (result.payload === "INPUT-0") state = 1;
@@ -64,7 +64,7 @@ function fetchDataAndSendAPI(deviceId) {
       }
       data = {
         "requestId":requestId,
-        "deviceId": deviceId,
+        "deviceId": `n_${deviceId}`,
         "kind": 2,
         "state": state,
         "time": formattedDate,

@@ -2,7 +2,10 @@ axios mqtt uuid crypto
 
 sv api
 
-mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "server/P00028/data" -m "RS485-0-01040002018F0"
+mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "device/00027/cmd" -m "PING"
+mosquitto_sub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "device/00027/cmd" 
+
+mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "server/00027/data" -m "INPUT-1"
 
 1. kind: 2, st: 2 -> no data & không có kết nối
 2. alive -> kind: 2 st: 1 (RS485-0-01040002018F0)
