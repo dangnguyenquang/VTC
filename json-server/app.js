@@ -12,8 +12,8 @@ const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
-const topicToPublish = 'device/P00028/cmd';
-const topicToSubscribe = 'server/P00028/data';
+const topicToPublish = 'device/00027/cmd';
+const topicToSubscribe = 'server/00027/data';
 
 const deviceInfoSchema = new mongoose.Schema({
     deviceID: String,
@@ -41,12 +41,15 @@ client.on('connect', () => {
 
 client.on('error', (error) => {
     console.error('Lỗi khi kết nối tới MQTT broker:', error);
-});
+}); // Kết nối với MQTT
+mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true }); // Kết nối với db
 
 server.use(middlewares);
 server.use(bodyParser.json());
-server.get('/api/syncdevice', (req, res) => {
 
+// ************************************************* //
+
+server.get('/api/syncdevice', (req, res) => {
     function faile_1(message, sentResponse) {
         var resdev = [
             {
@@ -75,7 +78,6 @@ server.get('/api/syncdevice', (req, res) => {
 
     var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
     var res_message;
-    mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
     const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
 
     DeviceInfo.find({})
@@ -88,10 +90,11 @@ server.get('/api/syncdevice', (req, res) => {
 
             // POST thông tin từng thiết bị thông qua total
             for (let i = 0; i < total; i++) {
-                var deviceId = `n_${result[i].deviceID.substring(1, 6)}`
+                var deviceId = `n_${result[i].deviceID}`
                 var serial = result[i].serialNumber;
                 var IMEI = result[i].IMEI;
-                var ngaysanxuat = result[i].ngaySanXuat;
+                var dateParts = result[i].ngaySanXuat.split('-');
+                var ngaysanxuat = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
                 const newDevice = {
                     "deviceId": deviceId,
                     "serial": serial,
@@ -105,87 +108,13 @@ server.get('/api/syncdevice', (req, res) => {
             console.log(data);
             success_1(data, res_message, sentResponse);
             sentResponse = true;
-            mongoose.connection.close();
         })
         .catch(err => {
             console.error(err);
             res_message = "Lỗi khi kết nối với cơ sở dữ liệu" + err;
             faile_1(res_message, sentResponse);
             sentResponse = true;
-            mongoose.connection.close();
         });
-});
-
-server.get('/requestdevice', (req, res) => {
-
-    function faile_5(message, sentResponse) {
-        var resdev = [
-            {
-                "result": -1,
-                "message": message,
-                "data": null,
-            }
-        ];
-        if (!sentResponse) { // Kiểm tra đã gửi response chưa
-            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
-        }
-    }
-
-    function success_5(message, sentResponse) {
-        var resdev = [
-            {
-                "result": 1,
-                "message": message,
-                "data": null,
-            }
-        ];
-        if (!sentResponse) { // Kiểm tra đã gửi response chưa
-            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
-        }
-    }
-
-    const requestId = req.query.requestId;
-    const deviceId = req.query.deviceId;
-    const action = req.query.action;
-    const sign = req.query.sign;
-
-    var res_message;
-
-    const sign_check = `${deviceId}${requestId}${ScretKey}`;
-    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
-
-    var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
-    if (sign === check) { // Kiểm tra tính hợp lệ của API
-        client.publish(topicToPublish, 'PING', (err) => {
-            if (err) {
-                console.error('Lỗi khi gửi tin nhắn:', err);
-                res_message = "Lỗi khi gửi tin cho mqtt broker";
-                faile_5(res_message, sentResponse);
-                sentResponse = true;
-            } else {
-                console.log('Đã gửi tin nhắn thành công');
-                timerId = setTimeout(() => {
-                    res_message = "Không có phản hồi từ thiết bị trong 3s";
-                    faile_5(res_message, sentResponse);
-                    sentResponse = true;
-                }, 3000); // 3s
-                client.on('message', (topic, message) => {
-                    clearTimeout(timerId);
-                    console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
-                    const strmess = message.toString();
-                    if (strmess.substring(0, 4) === "PING") {
-                        res_message = "Đã tiếp nhận";
-                        success_5(res_message, sentResponse);
-                        sentResponse = true;
-                    }
-                });
-            }
-        });
-    } else {
-        res_message = "sign không hợp lệ";
-        faile_5(res_message, sentResponse);
-        sentResponse = true;
-    }
 });
 
 server.post('/api/active', (req, res) => {
@@ -231,7 +160,7 @@ server.post('/api/active', (req, res) => {
         feeStatus = "Huy dich vu";
 
     DeviceInfo.findOneAndUpdate(
-        { deviceID: `P${deviceId.substring(2, 7)}` },
+        { deviceID: deviceId.substring(2, 7) },
         { $set: { feeStatus: feeStatus } },
         { new: true }
     )
@@ -327,6 +256,78 @@ server.get('/api/deviceinfo', (req, res) => {
 
 });
 
+server.get('/requestdevice', (req, res) => {
+
+    function faile_5(message, sentResponse) {
+        var resdev = [
+            {
+                "result": -1,
+                "message": message,
+                "data": null,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+    
+    function success_5(message, sentResponse) {
+        var resdev = [
+            {
+                "result": 1,
+                "message": message,
+                "data": null,
+            }
+        ];
+        if (!sentResponse) { // Kiểm tra đã gửi response chưa
+            res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
+        }
+    }
+
+    const requestId = req.query.requestId;
+    const deviceId = req.query.deviceId;
+    const action = req.query.action;
+    const sign = req.query.sign;
+
+    var res_message;
+
+    const sign_check = `${deviceId}${requestId}${ScretKey}`;
+    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
+
+    var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
+    if (sign === check) { // Kiểm tra tính hợp lệ của API
+        client.publish(topicToPublish, 'PING', (err) => {
+            if (err) {
+                console.error('Lỗi khi gửi tin nhắn:', err);
+                res_message = "Lỗi khi gửi tin cho mqtt broker";
+                faile_5(res_message, sentResponse);
+                sentResponse = true;
+            } else {
+                console.log('Đã gửi tin nhắn thành công');
+                timerId = setTimeout(() => {
+                    res_message = "Không có phản hồi từ thiết bị trong 3s";
+                    faile_5(res_message, sentResponse);
+                    sentResponse = true;
+                }, 3000); // 3s
+                client.on('message', (topic, message) => {
+                    clearTimeout(timerId);
+                    console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
+                    const strmess = message.toString();
+                    if (strmess.substring(0, 5) === "INPUT") {
+                        res_message = "Đã tiếp nhận";
+                        success_5(res_message, sentResponse);
+                        sentResponse = true;
+                    }
+                });
+            }
+        });
+    } else {
+        res_message = "sign không hợp lệ";
+        faile_5(res_message, sentResponse);
+        sentResponse = true;
+    }
+});
+
 server.post('/config', (req, res) => {
     function faile_6(message, sentResponse) {
         var resdev = [
@@ -360,11 +361,10 @@ server.post('/config', (req, res) => {
     const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
     const check = crypto.createHash('sha256').update(sign_check).digest('hex');
     if (sign === check) {
-        mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
         const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
 
         DeviceInfo.findOneAndUpdate(
-            { deviceID: `P${deviceId.substring(2, 7)}` },
+            { deviceID: `${deviceId.substring(2, 7)}` },
             { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
             { new: true }
         )
@@ -394,6 +394,9 @@ server.post('/config', (req, res) => {
         sentResponse = true;
     }
 });
+
+// ************************************************* //
+
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`JSON Server is running on port ${PORT}`);
