@@ -24,7 +24,8 @@ const deviceInfoSchema = new mongoose.Schema({
     wifiSSID: String,
     wifiPASS: String,
     connectStatus: String,
-    interval: Number
+    interval: Number,
+    lastUpdate: Date
 }, { collection: 'deviceInfo' });
 
 let timerId = null;

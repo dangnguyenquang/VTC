@@ -8,7 +8,7 @@ const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
-const mqtt_topic = "server/P00027/data";
+const mqtt_topic = "server/00027/data";
 
 const deviceDataSchema = new mongoose.Schema({
   deviceID: String,
@@ -77,7 +77,7 @@ function fetchDataAndSendAPI(deviceId) {
 }
 
 setInterval(() => {
-  const deviceId = 'P00027'; // Thay đổi deviceId tùy theo nhu cầu của bạn
+  const deviceId = '00027'; // Thay đổi deviceId tùy theo nhu cầu của bạn
   fetchDataAndSendAPI(deviceId);
 }, 15000);
 
@@ -87,7 +87,7 @@ client.on('message', (topic, message) => {
   const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
   const strmess = message.toString();
-  var deviceId = `n_${(topic.substring(8, 13))}`;
+  var deviceId = `n_${(topic.substring(7, 12))}`;
   var kind = 0;
 
   if (strmess.substring(6, 7) == "1") {

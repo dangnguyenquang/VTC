@@ -29,7 +29,8 @@ const deviceInfoSchema = new mongoose.Schema({
     wifiSSID: String,
     wifiPASS: String,
     connectStatus: String,
-    interval: Number
+    interval: Number,
+    lastUpdate: Date
 }, { collection: 'deviceInfo' });
 
 // Create a model for the collection
@@ -46,16 +47,17 @@ DeviceInfo.find({})
 
         // POST thông tin từng thiết bị thông qua total
         for (let i = 0; i < total; i++) {
-            var deviceId = `n_${result[i].deviceID.substring(1, 6)}`
+            var deviceId = `n_${result[i].deviceID}`
             var serial = result[i].serialNumber;
             var IMEI = result[i].IMEI;
-            var ngaysanxuat = result[i].ngaySanXuat;
+            var dateParts = result[i].ngaySanXuat.split('-');
+            var ngaysanxuat = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
             const newDevice = {
                 "deviceId": deviceId,
                 "serial": serial,
                 "IMEI": IMEI,
                 "ngaysanxuat": ngaysanxuat
-            };
+            }
 
             data.device.push(newDevice);
         }
