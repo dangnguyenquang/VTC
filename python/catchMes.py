@@ -13,7 +13,7 @@ mqtt_port = 1884
 mqtt_username = "guest"
 mqtt_password = "123456a@"
 
-# Thiết lập kết nối đến MongoDB
+# Connect to mogo
 mongo_client = MongoClient('mongodb://localhost:27017')
 db = mongo_client['VTC']
 deviceInfoCol = db['deviceInfo']
@@ -34,7 +34,7 @@ def subscribe_to_topics(client):
 
 def on_message(client, userdata, msg):
     try:
-        # Lưu dữ liệu vào MongoDB cùng với thông tin thời gian nhận
+        # Save Data vao mongo with time stamp
         data = {
             "id": msg.topic.split("/")[1],
             "payload": msg.payload.decode(),
@@ -42,8 +42,8 @@ def on_message(client, userdata, msg):
         }
         deviceDataCol.insert_one(data)
         
-        # Đóng kết nối tới cơ sở dữ liệu MongoDB
-        mongo_client.close()
+        # Close mongo
+        #mongo_client.close()
         
         print("Data saved to MongoDB")
     except Exception as e:
@@ -60,11 +60,10 @@ def getIOTIDs():
         IOTIDs.append(doc['deviceID'])
     return IOTIDs
 
-# Tạo một pipeline để xác định các thay đổi muốn theo dõi
 def listenDeviceInfoChange():
     global IOTIDs
     try:
-        # Bắt đầu stream watch
+        # Start stream
         with deviceInfoCol.watch() as stream:
             for change in stream:
                 IOTIDs = getIOTIDs()
@@ -72,15 +71,15 @@ def listenDeviceInfoChange():
                 subscribe_to_topics(mqtt_client)
 
     except PyMongoError as e:
-        print("Lỗi xảy ra khi theo dõi thay đổi:", e)
+        print("Err:", e)
 
 def saveDataDB():
     global IOTIDs
-    # Tạo MQTT client và thiết lập callback functions
+
     mqtt_client.username_pw_set(mqtt_username, mqtt_password)
     mqtt_client.on_message = on_message
 
-    # Kết nối và lắng nghe dữ liệu từ MQTT broker
+    # Listen mongldata
     mqtt_client.connect(mqtt_host, mqtt_port)
     IOTIDs = getIOTIDs()
     IOTIDs = list(set(IOTIDs)) # loai bo cac phan tu trung nha

@@ -1,13 +1,13 @@
 from pymongo import MongoClient
 from datetime import datetime
-# Kết nối tới MongoDB
+# 
 client = MongoClient('localhost', 27017)
 db = client['VTC']
 collection = db['deviceInfo']
 
 now = datetime.now()
 
-# Tạo một document mới
+# 
 new_document = {
   'deviceID': '00027',
   'serialNumber': '00000',
@@ -21,6 +21,6 @@ new_document = {
   'lastUpdate': now
 }
 
-# Thêm document vào collection
+# Add 
 result = collection.insert_one(new_document)
 print(result.inserted_id)
