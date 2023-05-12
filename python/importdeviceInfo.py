@@ -5,7 +5,7 @@ client = MongoClient('localhost', 27017)
 db = client['VTC']
 collection = db['deviceInfo']
 
-now = datetime.now()
+now = datetime.utcnow()
 
 # 
 new_document = {

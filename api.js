@@ -30,7 +30,7 @@ const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
 
 client.on('connect', () => {
   console.log("Kết nối thành công tới MQTT broker");
-  
+
   client.subscribe(mqtt_topic);
 });
 mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -48,28 +48,46 @@ function sendMessageToAPI(data, api_url) {
 
 // Tự động lấy data từ db và gửi đi
 function fetchDataAndSendAPI(deviceId) {
-  var state = 0;
-  const interval = 600000;
+  var state, kind;
+  const interval = 60000;
   const now = new Date();
   const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-  DeviceData.findOne({ id : deviceId})
+
+  DeviceData.aggregate([
+    { $match: { id: deviceId } },
+    { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
+    { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
+  ])
     .then(result => {
-      if (now.getTime() - result.timestamp.getTime() <= interval){
-        if (result.payload === "INPUT-0") state = 1;
-      } 
-      else {
-        console.log("Thiết bị không phản hồi");
-        state = 2;
+      if (result.length > 0) {
+        const latestData = result[0];
+        if (now.getTime() - latestData.timestamp.getTime() <= interval) {
+          if (latestData.payload === "INPUT-0") {
+            state = 1;
+            kind = 2;
+          } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1"){
+            state = 1;
+            kind = 1;
+          } else {
+            state = 2;
+            kind = 2;
+          }
+        } else {
+          console.log("Thiết bị không phản hồi");
+          state = 2;
+          kind = 2;
+        }
+        const data = {
+          "requestId": requestId,
+          "deviceId": `n_${deviceId}`,
+          "kind": kind,
+          "state": state,
+          "time": formattedDate,
+        }
+        sendMessageToAPI(data, api_url);
       }
-      data = {
-        "requestId":requestId,
-        "deviceId": `n_${deviceId}`,
-        "kind": 2,
-        "state": state,
-        "time": formattedDate,
-      }
-      sendMessageToAPI(data, api_url);
+      
     })
     .catch(err => {
       console.error(err);
@@ -80,6 +98,7 @@ setInterval(() => {
   const deviceId = '00027'; // Thay đổi deviceId tùy theo nhu cầu của bạn
   fetchDataAndSendAPI(deviceId);
 }, 15000);
+
 
 client.on('message', (topic, message) => {
   console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
@@ -92,7 +111,7 @@ client.on('message', (topic, message) => {
 
   if (strmess.substring(6, 7) == "1") {
     if (strmess === "INPUT-1") kind = 1;
-    else kind = 4;
+    else if (strmess === "BUTTO-1") kind = 4;
     const data = {
       "requestId": requestId,
       "deviceId": deviceId,

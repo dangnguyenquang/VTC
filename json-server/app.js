@@ -35,7 +35,7 @@ server.use(middlewares);
 server.use(bodyParser.json());
 
 // ************************************************* //
-
+// 1. Đồng bộ thiết bị
 server.get('/api/syncdevice', (req, res) => {
     function faile_1(message, sentResponse) {
         var resdev = [
@@ -103,6 +103,7 @@ server.get('/api/syncdevice', (req, res) => {
         });
 });
 
+// 2. Kích hoạt ngưng dịch vụ
 server.post('/api/active', (req, res) => {
     function faile_2(message, sentResponse) {
         var resdev = [
@@ -172,6 +173,7 @@ server.post('/api/active', (req, res) => {
         });
 });
 
+// 3. Thông tin thiết bị 
 server.get('/api/deviceinfo', (req, res) => {
     const deviceId = req.query.deviceId
     var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
@@ -299,6 +301,7 @@ server.get('/api/deviceinfo', (req, res) => {
         });
 });
 
+// 5. Gửi yêu cầu xuống thiết bị
 server.get('/requestdevice', (req, res) => {
 
     function faile_5(message, sentResponse) {
@@ -356,7 +359,7 @@ server.get('/requestdevice', (req, res) => {
         console.error('Lỗi khi kết nối tới MQTT broker:', error);
     }); // Kết nối với MQTT
 
-    if (sign === "xxxx") { // Kiểm tra tính hợp lệ của API
+    if (sign === check) { // Kiểm tra tính hợp lệ của API
         client.publish(topicToPublish, 'PING', (err) => {
             if (err) {
                 console.error('Lỗi khi gửi tin nhắn:', err);
@@ -389,6 +392,7 @@ server.get('/requestdevice', (req, res) => {
     }
 });
 
+// 6. Cấu hình
 server.post('/config', (req, res) => {
     function faile_6(message, sentResponse) {
         var resdev = [

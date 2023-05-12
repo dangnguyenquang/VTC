@@ -4,7 +4,7 @@ from threading import Thread
 import threading
 import time
 import paho.mqtt.client as mqtt
-import datetime
+from datetime import datetime
 
 IOTIDs =[]
 #mqtt
@@ -38,7 +38,7 @@ def on_message(client, userdata, msg):
         data = {
             "id": msg.topic.split("/")[1],
             "payload": msg.payload.decode(),
-            "timestamp": datetime.datetime.now()
+            "timestamp": datetime.utcnow()
         }
         deviceDataCol.insert_one(data)
         

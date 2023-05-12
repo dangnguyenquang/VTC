@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 
 const requestId = uuidv4().toUpperCase().replace(/-/g, '');
-const deviceId = "n_00028";
+const deviceId = "n_00025";
 const action = "wifi";
 const ScretKey = "ScretKey";
 
