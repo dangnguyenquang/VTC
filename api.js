@@ -8,8 +8,13 @@ const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
-const mqtt_topic = "server/00027/data";
 
+let deviceIds = [];
+let topics = [];
+
+// **************************************************************** //
+// Database
+mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
 const deviceDataSchema = new mongoose.Schema({
   deviceID: String,
   payload: String,
@@ -17,24 +22,107 @@ const deviceDataSchema = new mongoose.Schema({
 }, { collection: 'deviceData' });
 const DeviceData = mongoose.model('deviceData', deviceDataSchema);
 
+const deviceInfoSchema = new mongoose.Schema({
+  deviceID: String,
+  serialNumber: String,
+  IMEI: String,
+  ngaySanXuat: String,
+  feeStatus: String,
+  wifiSSID: String,
+  wifiPASS: String,
+  connectStatus: String,
+  interval: Number,
+  lastUpdate: Date
+}, { collection: 'deviceInfo' });
+const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
+
+const changeStream = DeviceInfo.watch();
+
+// Lắng nghe sự kiện thay đổi trên collection
+changeStream.on('change', (change) => {
+  DeviceInfo.find({})
+    .then((devices) => {
+      let newDeviceIds = devices.map(device => device.deviceID);
+      let newTopics = newDeviceIds.map(deviceId => `server/${deviceId}/data`);
+      updateTopics(newTopics)
+      console.log('Initial devices', newDeviceIds);
+      deviceIds = newDeviceIds;
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+});
+
+// In ra các deviceId hiện có
+DeviceInfo.find({})
+  .then((devices) => {
+    deviceIds = devices.map(device => device.deviceID);
+    topics = deviceIds.map(deviceId => `server/${deviceId}/data`);
+    console.log('Initial devices', deviceIds);
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+
+// **************************************************************** //
+// Server VTC
 const token = 'dg-fDVjn2UCCp0VlJB9IIj3eeDnTud-crV9DroTKRB4OCkxC9qzqxbfH-0uor604hu6hsStS_hQUmVnmzeMfJuI4QdXbsMF88CU6PzLmt0A=';
 const config = {
   headers: { Authorization: `Bearer ${token}` }
 };
 const api_url = "http://eoc-api.vtctelecom.com.vn/api/message";
 
+// **************************************************************** //
+// MQTT
 const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
   username: mqtt_username,
   password: mqtt_password
 });
+function subscribeTopics() {
+  if (topics.length === 0) {
+    console.log('Danh sách cách topics để subscribe rỗng');
+  } else {
+    client.subscribe(topics, (err) => {
+      if (err) {
+        console.error('Lỗi khi subscribe các topic:', err);
+      } else {
+        console.log('Đã subscribe các topic thành công:', topics);
+      }
+    });
+  }
+}
 
+// Khi kết nối thành công tới MQTT broker
 client.on('connect', () => {
-  console.log("Kết nối thành công tới MQTT broker");
+  console.log('Kết nối thành công tới MQTT broker');
 
-  client.subscribe(mqtt_topic);
+  // Subscribe các topic ban đầu
+  subscribeTopics();
 });
-mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
 
+// Cập nhật mảng topics
+function updateTopics(newTopics) {
+  if (topics.length === 0) {
+    topics = newTopics;
+    subscribeTopics();
+  } else {
+    // Unsubscribe các topic hiện tại
+    client.unsubscribe(topics, (err) => {
+      if (err) {
+        console.error('Lỗi khi unsubscribe các topic:', err);
+      } else {
+        console.log('Đã unsubscribe các topic thành công:', topics);
+        topics = newTopics;
+
+        // Subscribe các topic mới
+        subscribeTopics();
+      }
+    });
+  }
+}
+
+// **************************************************************** //
+// Hàm gửi API
 function sendMessageToAPI(data, api_url) {
   axios.post(api_url, data, config)
     .then((response) => {
@@ -46,6 +134,7 @@ function sendMessageToAPI(data, api_url) {
     });
 }
 
+// **************************************************************** //
 // Tự động lấy data từ db và gửi đi
 function fetchDataAndSendAPI(deviceId) {
   var state, kind;
@@ -66,7 +155,7 @@ function fetchDataAndSendAPI(deviceId) {
           if (latestData.payload === "INPUT-0") {
             state = 1;
             kind = 2;
-          } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1"){
+          } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
             state = 1;
             kind = 1;
           } else {
@@ -87,7 +176,7 @@ function fetchDataAndSendAPI(deviceId) {
         }
         sendMessageToAPI(data, api_url);
       }
-      
+
     })
     .catch(err => {
       console.error(err);
@@ -95,11 +184,18 @@ function fetchDataAndSendAPI(deviceId) {
 }
 
 setInterval(() => {
-  const deviceId = '00027'; // Thay đổi deviceId tùy theo nhu cầu của bạn
-  fetchDataAndSendAPI(deviceId);
+  if (deviceIds.length === 0) {
+    console.log("Không tồn tại thiết bị nào trong database");
+  } else {
+    for (let i = 0; i < deviceIds.length; i++) {
+      const deviceId = deviceIds[i]; // Lấy phần tử tương ứng từ mảng deviceIds
+      fetchDataAndSendAPI(deviceId);
+    }
+  }
 }, 15000);
 
-
+// **************************************************************** //
+// Nhận tin nhắn mới từ MQTT
 client.on('message', (topic, message) => {
   console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
   const now = new Date();
