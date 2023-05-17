@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const moment = require('moment');
 
 const db_url = 'mongodb://localhost:27017/VTC';
-const ScretKey = "ScretKey"; // VTC cung cấp
+const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
 const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
 const mqtt_username = "guest";
@@ -145,6 +145,11 @@ server.post('/api/active', (req, res) => {
         feeStatus = "Ngung dich vu";
     else if (status === 3)
         feeStatus = "Huy dich vu";
+    else {
+        res_message = "Sai status";
+        faile_2(res_message, sentResponse);
+        sentResponse = true;
+    }
 
     DeviceInfo.findOneAndUpdate(
         { deviceID: deviceId.substring(2, 7) },
@@ -295,7 +300,7 @@ server.get('/api/deviceinfo', (req, res) => {
         .catch(err => {
             console.error(err);
             isSucces = false;
-            res_message = "Không kết nối được với database"
+            res_message = "Không tìm thấy deviceID"
             response(res_message, sentResponse, isSucces);
             sentResponse = true;
         });
