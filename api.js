@@ -8,9 +8,14 @@ const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
+var client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
+  username: mqtt_username,
+  password: mqtt_password
+});
 
 let deviceIds = [];
 let topics = [];
+let checkLastedMess = [];
 
 // **************************************************************** //
 // Database
@@ -45,7 +50,21 @@ changeStream.on('change', (change) => {
       let newDeviceIds = devices.map(device => device.deviceID);
       let newTopics = newDeviceIds.map(deviceId => `server/${deviceId}/data`);
       updateTopics(newTopics)
+      // Lặp qua các phần tử trong mảng deviceIds
+      for (let i = 0; i < newDeviceIds.length; i++) {
+        const newId = newDeviceIds[i];
+
+        // Kiểm tra xem id đã tồn tại trong mảng checkLastedMess chưa
+        const existingId = checkLastedMess.find(obj => obj.id === newId);
+        if (existingId) {
+          continue; // Nếu đã tồn tại, bỏ qua việc gắn id
+        }
+
+        checkLastedMess.push({ id: newId, lastedMess: "0" });
+      }
+      checkLastedMess = checkLastedMess.filter(obj => newDeviceIds.includes(obj.id));
       console.log('Initial devices', newDeviceIds);
+      console.log(checkLastedMess);
       deviceIds = newDeviceIds;
     })
     .catch((err) => {
@@ -58,7 +77,22 @@ DeviceInfo.find({})
   .then((devices) => {
     deviceIds = devices.map(device => device.deviceID);
     topics = deviceIds.map(deviceId => `server/${deviceId}/data`);
+    var client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
+      username: mqtt_username,
+      password: mqtt_password
+    });
+    // Khi kết nối thành công tới MQTT broker
+    client.on('connect', () => {
+      console.log('Kết nối thành công tới MQTT broker');
+
+      // Subscribe các topic ban đầu
+      subscribeTopics();
+    });
+    for (let i = 0; i < deviceIds.length; i++) {
+      checkLastedMess.push({ id: deviceIds[i], lastedMess: "0" });
+    }
     console.log('Initial devices', deviceIds);
+    console.log(checkLastedMess);
   })
   .catch((err) => {
     console.log(err);
@@ -74,10 +108,6 @@ const api_url = "http://eoc-api.vtctelecom.com.vn/api/message";
 
 // **************************************************************** //
 // MQTT
-const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
-  username: mqtt_username,
-  password: mqtt_password
-});
 function subscribeTopics() {
   if (topics.length === 0) {
     console.log('Danh sách cách topics để subscribe rỗng');
@@ -91,14 +121,6 @@ function subscribeTopics() {
     });
   }
 }
-
-// Khi kết nối thành công tới MQTT broker
-client.on('connect', () => {
-  console.log('Kết nối thành công tới MQTT broker');
-
-  // Subscribe các topic ban đầu
-  subscribeTopics();
-});
 
 // Cập nhật mảng topics
 function updateTopics(newTopics) {
@@ -196,6 +218,25 @@ setInterval(() => {
 
 // **************************************************************** //
 // Nhận tin nhắn mới từ MQTT
+function getLastedMessById(id) {
+  const foundObject = checkLastedMess.find(obj => obj.id === id);
+  if (foundObject) {
+    return foundObject.lastedMess;
+  } else {
+    return null; // Trả về null nếu không tìm thấy đối tượng có id tương ứng
+  }
+}
+
+function updateLastedMessById(id, newLastedMess) {
+  const index = checkLastedMess.findIndex(obj => obj.id === id);
+  if (index !== -1) {
+    checkLastedMess[index].lastedMess = newLastedMess;
+    console.log(`Đã cập nhật lastedMess của id ${id} thành ${newLastedMess}`);
+  } else {
+    console.log(`Không tìm thấy id ${id} trong mảng checkLastedMess`);
+  }
+}
+
 client.on('message', (topic, message) => {
   console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
   const now = new Date();
@@ -216,6 +257,18 @@ client.on('message', (topic, message) => {
       "time": formattedDate
     }
 
+    updateLastedMessById(topic.substring(7, 12), "1");
+    sendMessageToAPI(data, api_url);
+  } else if (strmess.substring(6, 7) == "0" && getLastedMessById(topic.substring(7, 12)) === "1") {
+    const data = {
+      "requestId": requestId,
+      "deviceId": deviceId,
+      "kind": 1,
+      "state": 3,
+      "time": formattedDate
+    }
+
+    updateLastedMessById(topic.substring(7, 12), "0");
     sendMessageToAPI(data, api_url);
   }
 });

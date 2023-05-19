@@ -9,7 +9,7 @@ now = datetime.utcnow()
 
 # 
 new_document = {
-  'deviceID': '00026',
+  'deviceID': '00027',
   'serialNumber': '00000',
   'IMEI': '000001',
   'ngaySanXuat': '2022-12-25',

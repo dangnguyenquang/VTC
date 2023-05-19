@@ -340,7 +340,7 @@ server.get('/requestdevice', (req, res) => {
     const requestId = req.query.requestId;
     const deviceId = req.query.deviceId;
     const action = req.query.action;
-    const sign = req.query.sign;
+    // const sign = req.query.sign;
     const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
         username: mqtt_username,
         password: mqtt_password
@@ -348,8 +348,8 @@ server.get('/requestdevice', (req, res) => {
 
     var res_message;
 
-    const sign_check = `${deviceId}${requestId}${ScretKey}`;
-    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
+    // const sign_check = `${deviceId}${requestId}${ScretKey}`;
+    // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
 
     const topicToPublish = `device/${deviceId.substring(2, 7)}/cmd`;
     const topicToSubscribe = `server/${deviceId.substring(2, 7)}/data`;
@@ -364,37 +364,38 @@ server.get('/requestdevice', (req, res) => {
         console.error('Lỗi khi kết nối tới MQTT broker:', error);
     }); // Kết nối với MQTT
 
-    if (sign === check) { // Kiểm tra tính hợp lệ của API
-        client.publish(topicToPublish, 'PING', (err) => {
-            if (err) {
-                console.error('Lỗi khi gửi tin nhắn:', err);
-                res_message = "Lỗi khi gửi tin cho mqtt broker";
+    // if (sign === check) { // Kiểm tra tính hợp lệ của API
+    client.publish(topicToPublish, 'PING', (err) => {
+        if (err) {
+            console.error('Lỗi khi gửi tin nhắn:', err);
+            res_message = "Lỗi khi gửi tin cho mqtt broker";
+            faile_5(res_message, sentResponse);
+            sentResponse = true;
+        } else {
+            console.log('Đã gửi tin nhắn thành công');
+            timerId = setTimeout(() => {
+                res_message = "Không có phản hồi từ thiết bị trong 10s";
                 faile_5(res_message, sentResponse);
                 sentResponse = true;
-            } else {
-                console.log('Đã gửi tin nhắn thành công');
-                timerId = setTimeout(() => {
-                    res_message = "Không có phản hồi từ thiết bị trong 10s";
-                    faile_5(res_message, sentResponse);
+            }, 10000); // 3s
+            client.on('message', (topic, message) => {
+                clearTimeout(timerId);
+                console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
+                const strmess = message.toString();
+                if (strmess.substring(0, 5) === "INPUT") {
+                    res_message = "Đã tiếp nhận";
+                    success_5(res_message, sentResponse);
                     sentResponse = true;
-                }, 10000); // 3s
-                client.on('message', (topic, message) => {
-                    clearTimeout(timerId);
-                    console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
-                    const strmess = message.toString();
-                    if (strmess.substring(0, 5) === "INPUT") {
-                        res_message = "Đã tiếp nhận";
-                        success_5(res_message, sentResponse);
-                        sentResponse = true;
-                    }
-                });
-            }
-        });
-    } else {
-        res_message = "sign không hợp lệ";
-        faile_5(res_message, sentResponse);
-        sentResponse = true;
-    }
+                }
+            });
+        }
+    });
+    // } 
+    // else {
+    //     res_message = "sign không hợp lệ";
+    //     faile_5(res_message, sentResponse);
+    //     sentResponse = true;
+    // }
 });
 
 // 6. Cấu hình
@@ -427,42 +428,44 @@ server.post('/config', (req, res) => {
 
     var res_message;
     var sentResponse = false;
-    const { requestId, deviceId, action, data, sign } = req.body;
-    const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
-    const check = crypto.createHash('sha256').update(sign_check).digest('hex');
-    if (sign === check) {
-        const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
+    const { requestId, deviceId, action, data } = req.body;
+    // const { requestId, deviceId, action, data, sign } = req.body;
+    // const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
+    // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
+    // if (sign === check) {
+    const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
 
-        DeviceInfo.findOneAndUpdate(
-            { deviceID: deviceId.substring(2, 7) },
-            { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
-            { new: true }
-        )
-            .then(updatedUser => {
-                if (updatedUser) {
-                    console.log('Thành công');
-                    res_message = "Thành công";
-                    success_6(data, res_message, sentResponse);
-                    sentResponse = true;
-                    console.log(updatedUser);
-                } else {
-                    console.log('Không tìm thấy deviceID');
-                    res_message = "Không tìm thấy deviceID";
-                    faile_6(res_message, sentResponse);
-                    sentResponse = true;
-                }
-            })
-            .catch(error => {
-                console.error('Lỗi khi cập nhật:', err);
-                res_message = err;
+    DeviceInfo.findOneAndUpdate(
+        { deviceID: deviceId.substring(2, 7) },
+        { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
+        { new: true }
+    )
+        .then(updatedUser => {
+            if (updatedUser) {
+                console.log('Thành công');
+                res_message = "Thành công";
+                success_6(data, res_message, sentResponse);
+                sentResponse = true;
+                console.log(updatedUser);
+            } else {
+                console.log('Không tìm thấy deviceID');
+                res_message = "Không tìm thấy deviceID";
                 faile_6(res_message, sentResponse);
                 sentResponse = true;
-            });
-    } else {
-        res_message = "sign không hợp lệ";
-        faile_6(res_message, sentResponse);
-        sentResponse = true;
-    }
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi khi cập nhật:', err);
+            res_message = err;
+            faile_6(res_message, sentResponse);
+            sentResponse = true;
+        });
+    // } 
+    // else {
+    //     res_message = "sign không hợp lệ";
+    //     faile_6(res_message, sentResponse);
+    //     sentResponse = true;
+    // }
 });
 
 // ************************************************* //
