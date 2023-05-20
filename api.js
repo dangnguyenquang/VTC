@@ -158,52 +158,76 @@ function sendMessageToAPI(data, api_url) {
 
 // **************************************************************** //
 // Tự động lấy data từ db và gửi đi
-function fetchDataAndSendAPI(deviceId) {
-  var state, kind;
-  const interval = 60000;
-  const now = new Date();
-  const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-  const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-
-  DeviceData.aggregate([
-    { $match: { id: deviceId } },
-    { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
-    { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
-  ])
-    .then(result => {
-      if (result.length > 0) {
-        const latestData = result[0];
-        if (now.getTime() - latestData.timestamp.getTime() <= interval) {
-          if (latestData.payload === "INPUT-0") {
-            state = 1;
-            kind = 2;
-          } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
-            state = 1;
-            kind = 1;
-          } else {
-            state = 2;
-            kind = 2;
-          }
-        } else {
-          console.log("Thiết bị không phản hồi");
-          state = 2;
-          kind = 2;
-        }
-        const data = {
-          "requestId": requestId,
-          "deviceId": `n_${deviceId}`,
-          "kind": kind,
-          "state": state,
-          "time": formattedDate,
-        }
-        sendMessageToAPI(data, api_url);
+function getIntervalWithDeviceId(deviceId) {
+  return DeviceInfo.findOne({ deviceID: deviceId }) // Truy vấn dựa vào deviceId
+    .then((device) => {
+      if (device) {
+        return device.interval; // Trả về giá trị trường interval của device
+      } else {
+        throw new Error('Device not found'); // Ném lỗi nếu không tìm thấy device
       }
-
     })
-    .catch(err => {
-      console.error(err);
+    .catch((err) => {
+      console.log(err);
+      throw err; // Ném lỗi để xử lý ở phần gọi hàm getIntervalWithDeviceId
     });
 }
+
+function fetchDataAndSendAPI(deviceId) {
+  var state, kind;
+  getIntervalWithDeviceId(deviceId)
+    .then((interval) => {
+      const adjustedInterval = interval * 1000 * 3;
+      console.log(adjustedInterval);
+
+      const now = new Date();
+      const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+      const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
+
+      DeviceData.aggregate([
+        { $match: { id: deviceId } },
+        { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
+        { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
+      ])
+        .then(result => {
+          if (result.length > 0) {
+            const latestData = result[0];
+            if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
+              if (latestData.payload === "INPUT-0") {
+                state = 1;
+                kind = 2;
+              } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
+                state = 1;
+                kind = 1;
+              } else {
+                state = 2;
+                kind = 2;
+              }
+            } else {
+              console.log("Thiết bị không phản hồi");
+              state = 2;
+              kind = 2;
+            }
+            const data = {
+              "requestId": requestId,
+              "deviceId": `n_${deviceId}`,
+              "kind": kind,
+              "state": state,
+              "time": formattedDate,
+            }
+            sendMessageToAPI(data, api_url);
+          }
+
+        })
+        .catch(err => {
+          console.error(err);
+        });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+}
+
 
 setInterval(() => {
   if (deviceIds.length === 0) {
