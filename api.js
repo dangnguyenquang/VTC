@@ -192,14 +192,11 @@ function fetchDataAndSendAPI(deviceId) {
           if (result.length > 0) {
             const latestData = result[0];
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
-              if (latestData.payload === "INPUT-0") {
-                state = 1;
-                kind = 2;
-              } else if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
+              if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
                 state = 1;
                 kind = 1;
               } else {
-                state = 2;
+                state = 1;
                 kind = 2;
               }
             } else {
