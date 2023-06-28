@@ -6,6 +6,8 @@ const mqtt = require('mqtt');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const moment = require('moment');
+const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 
 const db_url = 'mongodb://localhost:27017/VTC';
 const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
@@ -14,6 +16,14 @@ const mqtt_port = 1884;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
 
+// Server VTC
+const token = 'dg-fDVjn2UCCp0VlJB9IIj3eeDnTud-crV9DroTKRB4OCkxC9qzqxbfH-0uor604hu6hsStS_hQUmVnmzeMfJuI4QdXbsMF88CU6PzLmt0A=';
+const config = {
+  headers: { Authorization: `Bearer ${token}` }
+};
+const api_url = "http://eoc-api.vtctelecom.com.vn/api/message";
+
+// Database
 const deviceInfoSchema = new mongoose.Schema({
     deviceID: String,
     serialNumber: String,
@@ -28,12 +38,92 @@ const deviceInfoSchema = new mongoose.Schema({
 }, { collection: 'deviceInfo' });
 const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
 
+const deviceDataSchema = new mongoose.Schema({
+    deviceID: String,
+    payload: String,
+    timestamp: Date
+}, { collection: 'deviceData' });
+const DeviceData = mongoose.model('deviceData', deviceDataSchema);
+
 let timerId = null;
 mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true }); // Kết nối với db
 
 server.use(middlewares);
 server.use(bodyParser.json());
 
+// Hàm gửi API
+function sendMessageToAPI(data, api_url) {
+    axios.post(api_url, data, config)
+      .then((response) => {
+        // console.log(`${JSON.stringify(data)}`)
+        console.log(data.deviceId, `- Đã gửi tin nhắn tới API thành công (message: ${JSON.stringify(response.data.message)}, kind: ${data.kind}, state: ${data.state})`);
+      })
+      .catch((error) => {
+        console.error("Lỗi khi gửi tin nhắn tới API", error);
+      });
+  }
+
+// Hàm lấy interval của thiết bị
+function getIntervalWithDeviceId(deviceId) {
+    return DeviceInfo.findOne({ deviceID: deviceId }) // Truy vấn dựa vào deviceId
+        .then((device) => {
+            if (device) {
+                return device.interval; // Trả về giá trị trường interval của device
+            } else {
+                throw new Error('Device not found'); // Ném lỗi nếu không tìm thấy device
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+            throw err; // Ném lỗi để xử lý ở phần gọi hàm getIntervalWithDeviceId
+        });
+}
+
+
+function fetchDataAndSendAPI(deviceId) {
+    var state, kind;
+    getIntervalWithDeviceId(deviceId)
+        .then((interval) => {
+            const adjustedInterval = interval * 1000 * 3;
+
+            const now = new Date();
+            const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
+
+            DeviceData.aggregate([
+                { $match: { id: deviceId } },
+                { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
+                { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
+            ])
+                .then(result => {
+                    if (result.length > 0) {
+                        const latestData = result[0];
+                        if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
+                            state = 1;
+                            kind = 3;
+                        } else {
+                            console.log(deviceId, " không phản hồi");
+                            state = 2;
+                            kind = 3;
+                        }
+                        const data = {
+                            "requestId": requestId,
+                            "deviceId": `n_${deviceId}`,
+                            "kind": kind,
+                            "state": state,
+                            "time": formattedDate,
+                        }
+                        sendMessageToAPI(data, api_url);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                });
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+}
 // ************************************************* //
 // 1. Đồng bộ thiết bị
 server.get('/api/syncdevice', (req, res) => {
@@ -310,7 +400,6 @@ server.get('/api/deviceinfo', (req, res) => {
 server.get('/requestdevice', (req, res) => {
 
     function faile_5(message, sentResponse) {
-        client.end();
         var resdev = [
             {
                 "result": -1,
@@ -324,7 +413,6 @@ server.get('/requestdevice', (req, res) => {
     }
 
     function success_5(message, sentResponse) {
-        client.end();
         var resdev = [
             {
                 "result": 1,
@@ -337,59 +425,35 @@ server.get('/requestdevice', (req, res) => {
         }
     }
 
+    var res_message;
+
     const requestId = req.query.requestId;
     const deviceId = req.query.deviceId;
     const action = req.query.action;
     // const sign = req.query.sign;
-    const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
-        username: mqtt_username,
-        password: mqtt_password
-    });
+    var sentResponse = false; 
 
-    var res_message;
+    DeviceInfo.findOne({ deviceID: deviceId.substring(2, 7) }) // Truy vấn dựa vào deviceId
+        .then((device) => {
+            if (device) {
+                fetchDataAndSendAPI(deviceId.substring(2, 7));
+                res_message = 'Tiếp nhận thành công';
+                success_5(res_message, sentResponse);
+                sentResponse = true;
+            } else {
+                res_message = 'deviceId không tồn tại';
+                faile_5(res_message, sentResponse);
+                sentResponse = true;
+                console.log('deviceId không tồn tại');
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+        });
 
     // const sign_check = `${deviceId}${requestId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
 
-    const topicToPublish = `device/${deviceId.substring(2, 7)}/cmd`;
-    const topicToSubscribe = `server/${deviceId.substring(2, 7)}/data`;
-
-    var sentResponse = false; // Biến để kiểm tra đã gửi response chưa
-    client.on('connect', () => {
-        console.log("Kết nối thành công tới MQTT broker");
-        client.subscribe(topicToSubscribe);
-    });
-
-    client.on('error', (error) => {
-        console.error('Lỗi khi kết nối tới MQTT broker:', error);
-    }); // Kết nối với MQTT
-
-    // if (sign === check) { // Kiểm tra tính hợp lệ của API
-    client.publish(topicToPublish, 'PING', (err) => {
-        if (err) {
-            console.error('Lỗi khi gửi tin nhắn:', err);
-            res_message = "Lỗi khi gửi tin cho mqtt broker";
-            faile_5(res_message, sentResponse);
-            sentResponse = true;
-        } else {
-            console.log('Đã gửi tin nhắn thành công');
-            timerId = setTimeout(() => {
-                res_message = "Không có phản hồi từ thiết bị trong 10s";
-                faile_5(res_message, sentResponse);
-                sentResponse = true;
-            }, 10000); // 3s
-            client.on('message', (topic, message) => {
-                clearTimeout(timerId);
-                console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
-                const strmess = message.toString();
-                if (strmess.substring(0, 5) === "INPUT") {
-                    res_message = "Đã tiếp nhận";
-                    success_5(res_message, sentResponse);
-                    sentResponse = true;
-                }
-            });
-        }
-    });
     // } 
     // else {
     //     res_message = "sign không hợp lệ";

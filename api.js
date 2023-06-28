@@ -16,7 +16,6 @@ var client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
 let deviceIds = [];
 let topics = [];
 let checkLastedMess = [];
-let periodic = false;
 
 // **************************************************************** //
 // Database
@@ -61,7 +60,7 @@ changeStream.on('change', (change) => {
           continue; // Nếu đã tồn tại, bỏ qua việc gắn id
         }
 
-        checkLastedMess.push({ id: newId, lastedMess: "0", periodic: 0 });
+        checkLastedMess.push({ id: newId, lastedMess: "0" });
       }
       checkLastedMess = checkLastedMess.filter(obj => newDeviceIds.includes(obj.id));
       console.log('Initial devices', newDeviceIds);
@@ -90,7 +89,7 @@ DeviceInfo.find({})
       subscribeTopics();
     });
     for (let i = 0; i < deviceIds.length; i++) {
-      checkLastedMess.push({ id: deviceIds[i], lastedMess: "0", periodic: 0 });
+      checkLastedMess.push({ id: deviceIds[i], lastedMess: "0" });
     }
     console.log('Initial devices', deviceIds);
     console.log(checkLastedMess);
@@ -123,16 +122,6 @@ function subscribeTopics() {
   }
 }
 
-// Cập nhật tính định kỳ
-function updatePeriodic() {
-  const now = new Date();
-  if (now.getHours() === 8 && now.getMinutes() === 0 && now.getSeconds() === 0 || now.getHours() === 8 && now.getMinutes() === 0 && now.getSeconds() === 1) {
-    periodic = true;
-  }
-}
-
-setInterval(updatePeriodic, 1000);
-
 // Cập nhật mảng topics
 function updateTopics(newTopics) {
   if (topics.length === 0) {
@@ -160,7 +149,7 @@ function sendMessageToAPI(data, api_url) {
   axios.post(api_url, data, config)
     .then((response) => {
       // console.log(`${JSON.stringify(data)}`)
-      console.log(data.deviceId ,`- Đã gửi tin nhắn tới API thành công (message: ${JSON.stringify(response.data.message)}, kind: ${data.kind}, state: ${data.state})`);
+      console.log(data.deviceId, `- Đã gửi tin nhắn tới API thành công (message: ${JSON.stringify(response.data.message)}, kind: ${data.kind}, state: ${data.state})`);
     })
     .catch((error) => {
       console.error("Lỗi khi gửi tin nhắn tới API", error);
@@ -184,7 +173,7 @@ function getIntervalWithDeviceId(deviceId) {
     });
 }
 
-function fetchDataAndSendAPI(deviceId, device_periodic) {
+function fetchDataAndSendAPI(deviceId) {
   var state, kind;
   getIntervalWithDeviceId(deviceId)
     .then((interval) => {
@@ -206,17 +195,10 @@ function fetchDataAndSendAPI(deviceId, device_periodic) {
               if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
                 state = 1;
                 kind = 1;
-              } else if (device_periodic == true) {
-                state = 1;
-                kind = 3;
               } else {
                 state = 1;
                 kind = 2;
               }
-            } else if (device_periodic == true){
-              console.log(deviceId, " không phản hồi");
-              state = 2;
-              kind = 3;
             } else {
               console.log(deviceId, " không phản hồi");
               state = 2;
@@ -254,17 +236,16 @@ setInterval(() => {
   const minute = now.getMinutes().toString().padStart(2, '0'); // Lấy phút (mm)
   const second = now.getSeconds().toString().padStart(2, '0'); // Lấy giây (ss)
 
-  const formattedDateTime = `${day}/${month}/${year} ${hour}:${minute}:${second}`;  
+  const formattedDateTime = `${day}/${month}/${year} ${hour}:${minute}:${second}`;
   console.log("===============================", formattedDateTime, "===============================",);
   if (deviceIds.length === 0) {
     console.log("Không tồn tại thiết bị nào trong database");
   } else {
     for (let i = 0; i < deviceIds.length; i++) {
       const deviceId = deviceIds[i]; // Lấy phần tử tương ứng từ mảng deviceIds
-      fetchDataAndSendAPI(deviceId, periodic);
+      fetchDataAndSendAPI(deviceId);
     }
   }
-  periodic = false;
 }, 15000);
 
 // **************************************************************** //
