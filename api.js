@@ -104,7 +104,8 @@ const token = 'dg-fDVjn2UCCp0VlJB9IIj3eeDnTud-crV9DroTKRB4OCkxC9qzqxbfH-0uor604h
 const config = {
   headers: { Authorization: `Bearer ${token}` }
 };
-const api_url = "http://eoc-api.vtctelecom.com.vn/api/message";
+// const api_url = "http://eoc-api.vtctelecom.com.vn/api/message"; url cũ 
+const api_url = "https://ialert.vnpt.vn/apivtc/conn/v1/message";
 
 // **************************************************************** //
 // MQTT
