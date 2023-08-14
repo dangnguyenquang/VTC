@@ -49,7 +49,7 @@ let timerId = null;
 mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true }); // Kết nối với db
 
 server.use(middlewares);
-server.use(bodyParser.json());
+server.use(bodyParser.json()); // Sử dụng để giải quyết yêu cầu post, put, ... biến JSON thành dữ liệu có thể xử lý được trong js
 
 // Hàm gửi API
 function sendMessageToAPI(data, api_url) {

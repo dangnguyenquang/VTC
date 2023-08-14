@@ -192,7 +192,7 @@ function fetchDataAndSendAPI(deviceId) {
           if (result.length > 0) {
             const latestData = result[0];
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
-              if (latestData.payload === "INPUT-1" || latestData.payload === "BUTTO-1") {
+              if (latestData.payload.substring(0, 7) === "INPUT-1") {
                 state = 1;
                 kind = 1;
               } else {
@@ -276,7 +276,7 @@ client.on('message', (topic, message) => {
   const now = new Date();
   const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-  const strmess = message.toString();
+  const strmess = message.toString().substring(0, 7);
   var deviceId = `n_${(topic.substring(7, 12))}`;
   var kind = 0;
 
