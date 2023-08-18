@@ -21,7 +21,7 @@ let checkLastedMess = [];
 // Database
 mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
 const deviceDataSchema = new mongoose.Schema({
-  deviceID: String,
+  id: String,
   payload: String,
   timestamp: Date
 }, { collection: 'deviceData' });

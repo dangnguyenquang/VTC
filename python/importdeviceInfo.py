@@ -9,7 +9,7 @@ now = datetime.utcnow()
 
 # 
 new_document = {
-  'deviceID': '00027',
+  'deviceID': '00032',
   'serialNumber': '00000',
   'IMEI': '000001',
   'ngaySanXuat': '2022-12-25',
@@ -17,7 +17,7 @@ new_document = {
   'wifiSSID': 'ngocbich',
   'wifiPASS': '21240516',
   'connectStatus': '4G',
-  'interval': 10,
+  'interval': 60,
   'lastUpdate': now
 }
 
