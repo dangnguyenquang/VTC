@@ -1,6 +1,6 @@
 const mqtt = require("mqtt");
 const mongoose = require("mongoose");
-const db_url = "mongodb://127.0.0.1:27017/VTC";
+const db_url = "mongodb://localhost:27017/VTC";
 
 const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
