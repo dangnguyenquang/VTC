@@ -1,0 +1,49 @@
+I. Cách cài replica cho mongo (để có thể sử dụng change stream):
+	1. Tắt mongo
+		a. linux: chạy lệnh systemclt stop mongod
+		b. windown: chạy lệnh net stop MongoDB
+	2. Thay đổi cài đặt trong file mongod.cfg (linux: trong etc, win: trong bin)
+		Thay đổi trường "replication:" thành:
+		replication: 
+  		     replSetName: rs0
+	3. Mở lại mongo	
+		a. linux: chạy lệnh systemclt start mongod
+		b. windown: chạy lệnh net start MongoDB
+	4. Khởi động dịch vụ mongo mỗi khi khởi động máy
+		a. linux: chạy lệnh systemclt enable mongod
+		b. windown:
+		- Mở cửa sổ Command Prompt (Cmd) bằng cách nhấn tổ hợp phím Win + R, nhập cmd, và nhấn Enter.
+			Gõ lệnh sau để mở công cụ quản lý dịch vụ: services.msc
+		- Tìm đến dịch vụ MongoDB trong danh sách dịch vụ. Tên dịch vụ có thể là "MongoDB", "MongoDB Server", hoặc tương tự.
+		- Chuột phải vào dịch vụ MongoDB và chọn "Properties".
+		- Trong cửa sổ Properties, chọn tab "Recovery".
+		- Đối với các tùy chọn "First failure", "Second failure", và "Subsequent failures", chọn "Restart the Service" cho mỗi tùy chọn.
+		- Nhấn OK để lưu các thay đổi.
+	5. Mở mongosh nhập lệnh:
+		rs.initiate()
+	6. Kiểm tra lại nhập lệnh:
+		rs.status()
+II. cấu trúc data base:
+
+Tên database: VTC 
+Tên các collection: deviceInfo, deviceInfoHistory, deviceData
+	deviceInfo: thông tin hiện tại tất cả các device đang có ví dụ bên dưới:
+		{ 
+			"_id" : ObjectId("645321aa8026d56a9e0285aa"), 
+			"deviceID" : "P00027", 
+			"serial" : "00000", 
+			"IMEI" : "000000", 
+			"ngaysanxuat" : "25/12/2022", 
+			"fee_status" : "kichhoat", 
+			"wifiSSID" : "ngocbich", 
+			"wifiPASS" : "21240516", 
+			"trangthaiketnoi" : "4G", 
+			"interval" : 10 
+		}
+	devideInfoHistory là lịch sử thay đổi deviceInfo
+	deviceData là data nhận được từ thiết bị có dạng:
+		INPUT-1 (có cháy) (1,1)
+		INPUT-0 (trạng thái bình thường)
+		BUTTO-1 (công tắc được nhấn)
+
+		thời gian gửi data cũng là một trường trong deviceData
