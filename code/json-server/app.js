@@ -3,13 +3,14 @@ const server = jsonServer.create();
 const middlewares = jsonServer.defaults();
 const crypto = require('crypto');
 const mqtt = require('mqtt');
-const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const moment = require('moment');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const DeviceInfo = require('../models/deviceInfo');
+const DeviceData = require('../models/deviceData');
+const db = require('../config/database');
 
-const db_url = 'mongodb://localhost:27017/VTC';
 const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
 const mqtt_broker = "iot-solar.nichietsuvn.com";
 const mqtt_port = 1884;
@@ -22,32 +23,12 @@ const config = {
   headers: { Authorization: `Bearer ${token}` }
 };
 // const api_url = "http://eoc-api.vtctelecom.com.vn/api/message"; url cũ 
-const api_url = "https://ialert.vnpt.vn/apivtc/conn/v1/message";
+const api_url = "https://ialert.vnpt.vn/apivtc/conn/v1";
 
 // Database
-const deviceInfoSchema = new mongoose.Schema({
-    deviceID: String,
-    serialNumber: String,
-    IMEI: String,
-    ngaySanXuat: String,
-    feeStatus: String,
-    wifiSSID: String,
-    wifiPASS: String,
-    connectStatus: String,
-    interval: Number,
-    lastUpdate: Date
-}, { collection: 'deviceInfo' });
-const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
-
-const deviceDataSchema = new mongoose.Schema({
-    deviceID: String,
-    payload: String,
-    timestamp: Date
-}, { collection: 'deviceData' });
-const DeviceData = mongoose.model('deviceData', deviceDataSchema);
 
 let timerId = null;
-mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true }); // Kết nối với db
+db.connect(); // Kết nối với db
 
 server.use(middlewares);
 server.use(bodyParser.json()); // Sử dụng để giải quyết yêu cầu post, put, ... biến JSON thành dữ liệu có thể xử lý được trong js
@@ -62,7 +43,7 @@ function sendMessageToAPI(data, api_url) {
       .catch((error) => {
         console.error("Lỗi khi gửi tin nhắn tới API", error);
       });
-  }
+}
 
 // Hàm lấy interval của thiết bị
 function getIntervalWithDeviceId(deviceId) {
@@ -79,7 +60,6 @@ function getIntervalWithDeviceId(deviceId) {
             throw err; // Ném lỗi để xử lý ở phần gọi hàm getIntervalWithDeviceId
         });
 }
-
 
 function fetchDataAndSendAPI(deviceId) {
     var state, kind;
@@ -114,7 +94,7 @@ function fetchDataAndSendAPI(deviceId) {
                             "state": state,
                             "time": formattedDate,
                         }
-                        sendMessageToAPI(data, api_url);
+                        sendMessageToAPI(data, api_url + '/message');
                     }
                 })
                 .catch(err => {
@@ -123,6 +103,66 @@ function fetchDataAndSendAPI(deviceId) {
         })
         .catch((err) => {
             console.log(err);
+        });
+}
+
+function informationAPI(deviceId) {
+    var conn_type;
+    const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
+
+    DeviceData.aggregate([
+        { $match: { id: deviceId } },
+        { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
+        { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
+    ])
+        .then(result => {
+            if (result.length > 0) {
+                const latestData = result[0];
+                if (latestData.payload.split(' ')[1] == 'SIM') conn_type = 1;
+                else if (latestData.payload.split(' ')[1] == 'LAN') conn_type = 2;
+                else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
+                const data = {
+                    "requestId": requestId,
+                    "deviceId": `n_${deviceId}`,
+                    "data":
+                    {
+                        "FW_version": "Eoc_FW_V.01",
+                        "conn_type": conn_type,
+                        "conn_priority": [1,2,3],
+                        "conn_speed": 30,
+                        "cycle": 10,
+                        "temperature": 45,
+                        "state": 1,
+                        "wifi": 
+                        {
+                            "ssid_name": "ssid",
+                            "password": "Admin@123",
+                            "status": 1
+                        },
+                        "sim": [
+                            {
+                                "number": "0123556789",
+                                "status": 1
+                            },
+                            {
+                                "number": "0123556789",
+                                "status": 0
+                            }],
+                        "LAN_state": 0,
+                        "charge_type": 1,
+                        "battery": 
+                        {
+                            "percentage": 90,
+                            "status": 1
+                        }
+                      }
+                }
+                console.log(data);
+                sendMessageToAPI(data, api_url + '/device/info');
+            }
+        })
+        .catch(err => {
+            console.error(err);
         });
 }
 // ************************************************* //
@@ -434,10 +474,29 @@ server.get('/requestdevice', (req, res) => {
     // const sign = req.query.sign;
     var sentResponse = false; 
 
-    DeviceInfo.findOne({ deviceID: deviceId.substring(2, 7) }) // Truy vấn dựa vào deviceId
+    if (action === 'tindinhky') {
+        DeviceInfo.findOne({ deviceID: deviceId.substring(2, 7) }) // Truy vấn dựa vào deviceId
+            .then((device) => {
+                if (device) {
+                    fetchDataAndSendAPI(deviceId.substring(2, 7));
+                    res_message = 'Tiếp nhận thành công';
+                    success_5(res_message, sentResponse);
+                    sentResponse = true;
+                } else {
+                    res_message = 'deviceId không tồn tại';
+                    faile_5(res_message, sentResponse);
+                    sentResponse = true;
+                    console.log('deviceId không tồn tại');
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+            });
+    } else if (action == 'thongtin') {
+        DeviceInfo.findOne({ deviceID: deviceId.substring(2, 7) }) // Truy vấn dựa vào deviceId
         .then((device) => {
             if (device) {
-                fetchDataAndSendAPI(deviceId.substring(2, 7));
+                informationAPI(deviceId.substring(2, 7));
                 res_message = 'Tiếp nhận thành công';
                 success_5(res_message, sentResponse);
                 sentResponse = true;
@@ -451,6 +510,12 @@ server.get('/requestdevice', (req, res) => {
         .catch((err) => {
             console.log(err);
         });
+    } else {
+        res_message = `Không tồn tại action: ${action}`;
+        faile_5(res_message, sentResponse);
+        sentResponse = true;
+        console.log(`Không tồn tại action: ${action}`);
+    }
 
     // const sign_check = `${deviceId}${requestId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');

@@ -1,14 +1,15 @@
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
-const mongoose = require('mongoose');
+const db = require('../config/database');
+const DeviceInfo = require('../models/deviceInfo');
+const DeviceData = require('../models/deviceData');
 
-const db_url = 'mongodb://localhost:27017/VTC';
 const requestId = uuidv4().toUpperCase().replace(/-/g, '');
 const token = 'dg-fDVjn2UCCp0VlJB9IIj3eeDnTud-crV9DroTKRB4OCkxC9qzqxbfH-0uor604hu6hsStS_hQUmVnmzeMfJuI4QdXbsMF88CU6PzLmt0A=';
 const config = {
     headers: { Authorization: `Bearer ${token}` }
 };
-mongoose.connect(db_url, { useNewUrlParser: true, useUnifiedTopology: true });
+db.connect();
 
 function sendMessageToAPI(data, api_url) {
     axios.post(api_url, data, config)
@@ -19,22 +20,6 @@ function sendMessageToAPI(data, api_url) {
             console.error("Lỗi khi gửi tin nhắn tới API", error);
         });
 }
-
-const deviceInfoSchema = new mongoose.Schema({
-    deviceID: String,
-    serialNumber: String,
-    IMEI: String,
-    ngaySanXuat: String,
-    feeStatus: String,
-    wifiSSID: String,
-    wifiPASS: String,
-    connectStatus: String,
-    interval: Number,
-    lastUpdate: Date
-}, { collection: 'deviceInfo' });
-
-// Create a model for the collection
-const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
 
 DeviceInfo.find({})
     .then(result => {
