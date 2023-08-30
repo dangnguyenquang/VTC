@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const db_url = 'mongodb://localhost:27017/VTC'; // nodeJS mới thì thay localhost = 127.0.0.1
+const db_url = 'mongodb://127.0.0.1:27017/VTC'; // nodeJS mới thì thay localhost = 127.0.0.1
 
 async function connect(){
     try {

@@ -563,8 +563,6 @@ server.post('/config', (req, res) => {
     // const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
     // if (sign === check) {
-    const DeviceInfo = mongoose.model('deviceInfo', deviceInfoSchema);
-
     DeviceInfo.findOneAndUpdate(
         { deviceID: deviceId.substring(2, 7) },
         { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
