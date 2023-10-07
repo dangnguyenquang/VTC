@@ -438,7 +438,7 @@ server.get('/api/deviceinfo', (req, res) => {
 });
 
 // 5. Gửi yêu cầu xuống thiết bị
-server.get('/requestdevice', (req, res) => {
+server.get('/api/requestdevice', (req, res) => {
 
     function faile_5(message, sentResponse) {
         var resdev = [
@@ -529,7 +529,7 @@ server.get('/requestdevice', (req, res) => {
 });
 
 // 6. Cấu hình
-server.post('/config', (req, res) => {
+server.post('/api/config', (req, res) => {
     function faile_6(message, sentResponse) {
         var resdev = [
             {
