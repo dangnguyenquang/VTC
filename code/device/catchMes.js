@@ -3,8 +3,8 @@ const db = require('../config/database');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
 
-const mqtt_broker = "iot-solar.nichietsuvn.com";
-const mqtt_port = 1884;
+const mqtt_broker = "iot-vtc.nichietsuvn.com";
+const mqtt_port = 1887;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
 var client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {

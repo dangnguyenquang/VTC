@@ -12,8 +12,8 @@ const DeviceData = require('../models/deviceData');
 const db = require('../config/database');
 
 const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
-const mqtt_broker = "iot-solar.nichietsuvn.com";
-const mqtt_port = 1884;
+const mqtt_broker = "iot-vtc.nichietsuvn.com";
+const mqtt_port = 1887;
 const mqtt_username = "guest";
 const mqtt_password = "123456a@";
 
