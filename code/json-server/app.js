@@ -129,9 +129,9 @@ function informationAPI(deviceId) {
                         "FW_version": "Eoc_FW_V.01",
                         "conn_type": conn_type,
                         "conn_priority": [1,2,3],
-                        "conn_speed": 30,
+                        "conn_speed": Math.floor(Math.random() * 26) + 70,
                         "cycle": 10,
-                        "temperature": 45,
+                        "temperature": Math.floor(Math.random() * 6) + 27,
                         "state": 1,
                         "wifi": 
                         {
