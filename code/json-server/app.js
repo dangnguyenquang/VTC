@@ -106,64 +106,91 @@ function fetchDataAndSendAPI(deviceId) {
         });
 }
 
+async function getWifiInfoById(deviceId) {
+    try {
+      // Sử dụng Mongoose để truy vấn cơ sở dữ liệu
+      const result = await DeviceInfo.findOne({ deviceID: deviceId });
+  
+      if (result) {
+        // Nếu tìm thấy bản ghi với id tương ứng
+        const wifiSSID = result.wifiSSID;
+        const wifiPASS = result.wifiPASS;
+        return { wifiSSID, wifiPASS };
+      } else {
+        // Nếu không tìm thấy bản ghi với id tương ứng
+        throw new Error("Không tìm thấy thiết bị với ID này.");
+      }
+    } catch (error) {
+      console.error("Lỗi khi truy vấn dữ liệu:", error);
+      throw error;
+    }
+  }
+
 function informationAPI(deviceId) {
     var conn_type;
     const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
 
-    DeviceData.aggregate([
-        { $match: { id: deviceId } },
-        { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
-        { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
-    ])
-        .then(result => {
-            if (result.length > 0) {
-                const latestData = result[0];
-                if (latestData.payload.split(' ')[1] == 'SIM') conn_type = 1;
-                else if (latestData.payload.split(' ')[1] == 'LAN') conn_type = 2;
-                else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
-                const data = {
-                    "requestId": requestId,
-                    "deviceId": `n_${deviceId}`,
-                    "data":
-                    {
-                        "FW_version": "Eoc_FW_V.01",
-                        "conn_type": conn_type,
-                        "conn_priority": [1,2,3],
-                        "conn_speed": Math.floor(Math.random() * 26) + 70,
-                        "cycle": 10,
-                        "temperature": Math.floor(Math.random() * 6) + 27,
-                        "state": 1,
-                        "wifi": 
+    getWifiInfoById(deviceId)
+    .then((wifiInfo) => {
+        console.log(wifiInfo.wifiSSID);
+        DeviceData.aggregate([
+            { $match: { id: deviceId } },
+            { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
+            { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
+        ])
+            .then(result => {
+                if (result.length > 0) {
+                    const latestData = result[0];
+                    if (latestData.payload.split(' ')[1] == 'SIM') conn_type = 1;
+                    else if (latestData.payload.split(' ')[1] == 'LAN') conn_type = 2;
+                    else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
+                    const data = {
+                        "requestId": requestId,
+                        "deviceId": `n_${deviceId}`,
+                        "data":
                         {
-                            "ssid_name": "ssid",
-                            "password": "Admin@123",
-                            "status": 1
-                        },
-                        "sim": [
+                            "FW_version": "Eoc_FW_V.01",
+                            "conn_type": conn_type,
+                            "conn_priority": [1,2,3],
+                            "conn_speed": Math.floor(Math.random() * 26) + 70,
+                            "cycle": 10,
+                            "temperature": Math.floor(Math.random() * 6) + 27,
+                            "state": 1,
+                            "wifi": 
                             {
-                                "number": "0123556789",
+                                "ssid_name": wifiInfo.wifiSSID,
+                                "password": wifiInfo.wifiPASS,
                                 "status": 1
                             },
+                            "sim": [
+                                {
+                                    "number": "0123556789",
+                                    "status": 1
+                                },
+                                {
+                                    "number": "0123556789",
+                                    "status": 0
+                                }],
+                            "LAN_state": 0,
+                            "charge_type": 1,
+                            "battery": 
                             {
-                                "number": "0123556789",
-                                "status": 0
-                            }],
-                        "LAN_state": 0,
-                        "charge_type": 1,
-                        "battery": 
-                        {
-                            "percentage": 90,
-                            "status": 1
-                        }
-                      }
+                                "percentage": 90,
+                                "status": 1
+                            }
+                          }
+                    }
+                    console.log(data);
+                    sendMessageToAPI(data, api_url + '/device/info');
                 }
-                console.log(data);
-                sendMessageToAPI(data, api_url + '/device/info');
-            }
-        })
-        .catch(err => {
-            console.error(err);
-        });
+            })
+            .catch(err => {
+                console.error(err);
+            });
+    })
+    .catch((err) => {
+      console.error("Lỗi:", err.message);
+    });
 }
 // ************************************************* //
 // 1. Đồng bộ thiết bị
