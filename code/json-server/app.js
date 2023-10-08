@@ -133,7 +133,6 @@ function informationAPI(deviceId) {
 
     getWifiInfoById(deviceId)
     .then((wifiInfo) => {
-        console.log(wifiInfo.wifiSSID);
         DeviceData.aggregate([
             { $match: { id: deviceId } },
             { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
@@ -175,7 +174,7 @@ function informationAPI(deviceId) {
                                     "number": "0123556789",
                                     "status": 0
                                 }],
-                            "LAN_state": 0,
+                            "LAN_state": LAN_state,
                             "charge_type": 1,
                             "battery": 
                             {
