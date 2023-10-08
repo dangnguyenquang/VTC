@@ -129,6 +129,7 @@ async function getWifiInfoById(deviceId) {
 function informationAPI(deviceId) {
     var conn_type;
     const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
+    var LAN_state = 0;
 
     getWifiInfoById(deviceId)
     .then((wifiInfo) => {
@@ -142,7 +143,10 @@ function informationAPI(deviceId) {
                 if (result.length > 0) {
                     const latestData = result[0];
                     if (latestData.payload.split(' ')[1] == 'SIM') conn_type = 1;
-                    else if (latestData.payload.split(' ')[1] == 'LAN') conn_type = 2;
+                    else if (latestData.payload.split(' ')[1] == 'LAN') { 
+                        conn_type = 2; 
+                        LAN_state = 1; 
+                    }
                     else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
                     const data = {
                         "requestId": requestId,
