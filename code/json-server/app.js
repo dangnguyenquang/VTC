@@ -127,7 +127,7 @@ async function getWifiInfoById(deviceId) {
   }
 
 function informationAPI(deviceId) {
-    var conn_type;
+    var conn_type, conn_speed, charge_type;
     const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
     var LAN_state = 0;
 
@@ -147,6 +147,8 @@ function informationAPI(deviceId) {
                         LAN_state = 1; 
                     }
                     else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
+                    if (latestData.payload.split(' ')[5] == 'BAT') charge_type = 1;
+                    else charge_type = 0;
                     const data = {
                         "requestId": requestId,
                         "deviceId": `n_${deviceId}`,
@@ -155,10 +157,10 @@ function informationAPI(deviceId) {
                             "FW_version": "Eoc_FW_V.01",
                             "conn_type": conn_type,
                             "conn_priority": [1,2,3],
-                            "conn_speed": Math.floor(Math.random() * 26) + 70,
+                            "conn_speed": latestData.payload.split(' ')[4],
                             "cycle": 10,
                             "temperature": Math.floor(Math.random() * 6) + 27,
-                            "state": 1,
+                            "state": 0,
                             "wifi": 
                             {
                                 "ssid_name": wifiInfo.wifiSSID,
@@ -175,10 +177,10 @@ function informationAPI(deviceId) {
                                     "status": 0
                                 }],
                             "LAN_state": LAN_state,
-                            "charge_type": 1,
+                            "charge_type": charge_type,
                             "battery": 
                             {
-                                "percentage": 90,
+                                "percentage": 100 - latestData.payload.split(' ')[6],
                                 "status": 1
                             }
                           }
