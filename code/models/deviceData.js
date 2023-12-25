@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const deviceDataSchema = new mongoose.Schema({
     id: String,
-    payload: String,
+    payload: Object,
     timestamp: Date
 }, { collection: 'deviceData' });
 

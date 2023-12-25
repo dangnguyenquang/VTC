@@ -100,21 +100,22 @@ function updateTopics(newTopics) {
 
 client.on('message', (topic, message) => {
     // Xử lý tin nhắn từ MQTT ở đây
-    const data = message.toString(); // Chuyển đổi dữ liệu từ Buffer sang chuỗi (tuỳ theo định dạng dữ liệu)
-  
-    // Tạo một bản ghi mới sử dụng model DeviceData
-    const newDeviceData = new DeviceData({
-      id: topic.substring(7, 12),
-      payload: data,
-      timestamp: new Date() // Thời gian hiện tại
-    });
-  
-    // Lưu bản ghi mới vào cơ sở dữ liệu
-    newDeviceData.save()
-      .then(() => {
-        console.log(topic.substring(7, 12) + ' saved new data to the database.');
-      })
-      .catch((error) => {
-        console.error(topic.substring(7, 12) + 'Error saving data to the database:', error);
+    if (message.toString().substring(0, 1) === "{") {
+      const data = JSON.parse(message.toString()); // Chuyển đổi dữ liệu từ Buffer sang chuỗi (tuỳ theo định dạng dữ liệu)
+      // Tạo một bản ghi mới sử dụng model DeviceData
+      const newDeviceData = new DeviceData({
+        id: topic.substring(7, 12),
+        payload: data,
+        timestamp: new Date() // Thời gian hiện tại
       });
+    
+      // Lưu bản ghi mới vào cơ sở dữ liệu
+      newDeviceData.save()
+        .then(() => {
+          console.log(topic.substring(7, 12) + ' saved new data to the database.');
+        })
+        .catch((error) => {
+          console.error(topic.substring(7, 12) + 'Error saving data to the database:', error);
+        });
+    }
   });

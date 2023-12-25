@@ -127,9 +127,7 @@ async function getWifiInfoById(deviceId) {
   }
 
 function informationAPI(deviceId) {
-    var conn_type, conn_speed, charge_type;
     const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-    var LAN_state = 0;
 
     getWifiInfoById(deviceId)
     .then((wifiInfo) => {
@@ -141,47 +139,39 @@ function informationAPI(deviceId) {
             .then(result => {
                 if (result.length > 0) {
                     const latestData = result[0];
-                    if (latestData.payload.split(' ')[1] == 'SIM') conn_type = 1;
-                    else if (latestData.payload.split(' ')[1] == 'LAN') { 
-                        conn_type = 2; 
-                        LAN_state = 1; 
-                    }
-                    else if (latestData.payload.split(' ')[1] == 'WIFI') conn_type = 3;
-                    if (latestData.payload.split(' ')[5] == 'BAT') charge_type = 1;
-                    else charge_type = 0;
                     const data = {
                         "requestId": requestId,
                         "deviceId": `n_${deviceId}`,
                         "data":
                         {
-                            "FW_version": "Eoc_FW_V.01",
-                            "conn_type": conn_type,
-                            "conn_priority": [1,2,3],
-                            "conn_speed": latestData.payload.split(' ')[4],
-                            "cycle": 10,
-                            "temperature": Math.floor(Math.random() * 6) + 27,
-                            "state": 0,
+                            "FW_version": (latestData.payload.data.FWver || "Eoc_FW_V.01"),
+                            "conn_type": (latestData.payload.data.CONtyp || 3),
+                            "conn_priority": (latestData.payload.data.CONpri || [1,2,3]),
+                            "conn_speed": (latestData.payload.data.CONspd || 30),
+                            "cycle": (latestData.payload.data.cyc || 10),
+                            "temperature": (latestData.payload.data.TEM || Math.floor(Math.random() * 6) + 27),
+                            "state": (latestData.payload === "error") ? 1 : 0,
                             "wifi": 
                             {
-                                "ssid_name": wifiInfo.wifiSSID,
-                                "password": wifiInfo.wifiPASS,
-                                "status": 1
+                                "ssid_name": (latestData.payload.data.WIF === undefined) ? wifiInfo.wifiSSID : latestData.payload.data.WIF.ssid,
+                                "password": (latestData.payload.data.WIF === undefined) ? wifiInfo.wifiPASS : (latestData.payload.data.WIF.pass || "null"),
+                                "status": (latestData.payload.data.WIF === undefined) ? 1 : latestData.payload.data.WIF.stt
                             },
                             "sim": [
                                 {
-                                    "number": "0123556789",
-                                    "status": 1
+                                    "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[0].num,
+                                    "status": (latestData.payload.data.SIM === undefined) ? 1 : latestData.payload.data.SIM[0].stt
                                 },
                                 {
-                                    "number": "0123556789",
-                                    "status": 0
+                                    "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[1].num,
+                                    "status": (latestData.payload.data.SIM === undefined) ? 0 : latestData.payload.data.SIM[0].stt
                                 }],
-                            "LAN_state": LAN_state,
-                            "charge_type": charge_type,
+                            "LAN_state": (latestData.payload.data.LANstt || 0),
+                            "charge_type": (latestData.payload.data.CHANGEtyp || 1),
                             "battery": 
                             {
-                                "percentage": 100 - latestData.payload.split(' ')[6],
-                                "status": 1
+                                "percentage": (latestData.payload.data.BAT === undefined) ?  90 : latestData.payload.data.BAT.percent,
+                                "status": (latestData.payload.data.BAT === undefined) ?  1 : latestData.payload.data.BAT.stt
                             }
                           }
                     }

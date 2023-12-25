@@ -172,18 +172,33 @@ function fetchDataAndSendAPI(deviceId) {
         .then(result => {
           if (result.length > 0) {
             const latestData = result[0];
+            const type = latestData.payload.type;
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
-              if (latestData.payload.substring(0, 7) === "INPUT-1") {
+              if (type === "emergency") {
+                if (latestData.payload.data.kind === 1) {
+                  kind = 1;
+                  state = 1;
+                } else if (latestData.payload.data.kind === 2){
+                  kind = 1;                 
+                  state = 4;
+                } else if (latestData.payload.data.kind === 3){
+                  kind = 1;                 
+                  state = 5;
+                }
+              } else if (type === "error") {
+                kind = 5;
                 state = 1;
-                kind = 1;
+              } else if (type === "ButtonTest"){
+                kind = 4;
+                state = 1;
               } else {
-                state = 1;
                 kind = 2;
+                state = 1;
               }
             } else {
               console.log(deviceId, " không phản hồi");
-              state = 2;
               kind = 2;
+              state = 2;
             }
             const data = {
               "requestId": requestId,
@@ -252,28 +267,50 @@ function updateLastedMessById(id, newLastedMess) {
 //
 
 client.on('message', (topic, message) => {
-  console.log(`Nhận được tin nhắn từ topic ${topic}: ${message.toString()}`);
+  var kind, state, type, strmess;
+  if (message.toString().substring(0, 1) !== "{") 
+    type = "undefined";
+  else {
+    strmess = JSON.parse(message.toString());
+    type = strmess.type;
+  }
+
+  console.log(`Nhận được tin nhắn từ topic ${topic} có loại: ${type}`); 
   const now = new Date();
   const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-  const strmess = message.toString().substring(0, 7);
-  var deviceId = `n_${(topic.substring(7, 12))}`;
-  var kind = 0;
 
-  if (strmess.substring(6, 7) == "1") {
-    if (strmess === "INPUT-1") kind = 1;
-    else if (strmess === "BUTTO-1") kind = 4;
+  var deviceId = `n_${(topic.substring(7, 12))}`;
+
+  if (type === "emergency") {
+    kind = 1;
+    if (strmess.data.kind === 1) state = 1;
+    else if (strmess.data.kind === 2) state = 4;
+    else if (strmess.data.kind === 3) state = 5;
     const data = {
       "requestId": requestId,
       "deviceId": deviceId,
       "kind": kind,
-      "state": 1,
+      "state": state,
       "time": formattedDate
     }
 
     updateLastedMessById(topic.substring(7, 12), "1");
     sendMessageToAPI(data, api_url);
-  } else if (strmess.substring(6, 7) == "0" && getLastedMessById(topic.substring(7, 12)) === "1") {
+  } else if (type === "ButtonTest") {
+    kind = 4;
+    state = 1;
+    const data = {
+      "requestId": requestId,
+      "deviceId": deviceId,
+      "kind": kind,
+      "state": state,
+      "time": formattedDate
+    }
+    
+    updateLastedMessById(topic.substring(7, 12), "1");
+    sendMessageToAPI(data, api_url);
+  } else if (type === "inf" && getLastedMessById(topic.substring(7, 12)) === "1") {
     const data = {
       "requestId": requestId,
       "deviceId": deviceId,

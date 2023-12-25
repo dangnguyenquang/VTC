@@ -3,9 +3,11 @@ axios mqtt uuid crypto
 sv api
 
 mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "device/00027/cmd" -m "PING"
-mosquitto_sub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "device/00027/cmd" 
+mosquitto_sub -h "iot-vtc.nichietsuvn.com" -p 1887 -u "guest" -P "123456a@" -t "device/00034/cmd"
 
-mosquitto_pub -h "iot-solar.nichietsuvn.com" -p 1884 -u "guest" -P "123456a@" -t "server/00027/data" -m "INPUT-1"
+mosquitto_pub -h "iot-vtc.nichietsuvn.com" -p 1887 -u "guest" -P "123456a@" -t "server/00034/data" -m "{\"type\": \"inf\",\"id\": \"n_123456\",\"data\":{\"cyc\": 10,\"FWver\": \"Eoc_FW_V.01\",\"CONpri\": [1, 2, 3],\"CONtyp\": 3,\"CONspd\": 30,\"WIF\":{\"ssid\": \"ssid\",\"pass\" : \"pass\",\"stt\": 1},\"SIM\":[{\"num\": \"0123556789\",\"stt\": 1},{\"num\": \"0123556789\",\"stt\": 0}],\"LANstt\": 0,\"CHANGEtyp\": 1,\"BAT\":{\"percent\": 90,\"stt\": 1},\"TEM\": 31}}"
+
+mosquitto_pub -h "iot-vtc.nichietsuvn.com" -p 1887 -u "guest" -P "123456a@" -t "server/00034/data" -m "{\"type\": \"emergency\",\"id\": \"n_123456\",\"data\": {\"cyc\": 10,\"kind\": 1,\" CONpri \": [1, 2, 3],\"CONtyp\": 1,\"CHANGEtyp\": 0,\"BAT\": {\"percent\": 90,\"stt\": 1},\"TEM\": 90}}"
 
 1. kind: 2, st: 2 -> no data & không có kết nối
 2. alive -> kind: 2 st: 1 (RS485-0-01040002018F0)
