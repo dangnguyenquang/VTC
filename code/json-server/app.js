@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
 const db = require('../config/database');
+const { Stream } = require('stream');
 
 const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
 const mqtt_broker = "iot-vtc.nichietsuvn.com";
@@ -553,26 +554,26 @@ server.get('/api/requestdevice', (req, res) => {
 // 6. Cấu hình
 server.post('/api/config', (req, res) => {
     function faile_6(message, sentResponse) {
-        var resdev = [
+        client.end();
+        var resdev = 
             {
                 "result": -1,
                 "message": message,
                 "data": null,
-            }
-        ];
+            };
         if (!sentResponse) { // Kiểm tra đã gửi response chưa
             res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
         }
     }
 
     function success_6(data, message, sentResponse) {
-        var resdev = [
+        client.end();
+        var resdev = 
             {
                 "result": 1,
                 "message": message,
                 "data": data,
-            }
-        ];
+            };
         if (!sentResponse) { // Kiểm tra đã gửi response chưa
             res.json(resdev); // Sử dụng return để đảm bảo chỉ gửi headers một lần
         }
@@ -581,6 +582,23 @@ server.post('/api/config', (req, res) => {
     var res_message;
     var sentResponse = false;
     const { requestId, deviceId, action, data } = req.body;
+    const topicToPublish = `device/${deviceId.substring(2, 7)}/cmd`;
+    const topicToSubscribe = `server/${deviceId.substring(2, 7)}/data`;
+
+    const client = mqtt.connect(`mqtt://${mqtt_broker}:${mqtt_port}`, {
+        username: mqtt_username,
+        password: mqtt_password
+    });
+
+    client.on('connect', () => {
+        console.log("Kết nối thành công tới MQTT broker");
+        client.subscribe(topicToSubscribe);
+    });
+
+    client.on('error', (error) => {
+        console.error('Lỗi khi kết nối tới MQTT broker:', error);
+    }); // Kết nối với MQTT
+
     // const { requestId, deviceId, action, data, sign } = req.body;
     // const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
@@ -592,11 +610,43 @@ server.post('/api/config', (req, res) => {
     )
         .then(updatedUser => {
             if (updatedUser) {
-                console.log('Thành công');
-                res_message = "Thành công";
-                success_6(data, res_message, sentResponse);
-                sentResponse = true;
-                console.log(updatedUser);
+                client.publish(topicToPublish, 'SERVERCMD_GOTOCFG_WIFI', (err) => {
+                    if (err) {
+                        console.error('Lỗi khi gửi tin nhắn:', err);
+                        res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
+                        faile_6(res_message, sentResponse);
+                        sentResponse = true;
+                    } else {
+                        console.log('SERVERCMD_GOTOCFG_WIFI thành công');
+                        client.publish(topicToPublish, `ssid:${data.ssid}/pass:${data.pwd}.`, (err) => {
+                            if (err) {
+                                console.error('Lỗi khi gửi tin nhắn:', err);
+                                res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
+                                faile_6(res_message, sentResponse);
+                                sentResponse = true;
+                            } else {
+                                timerId = setTimeout(() => {
+                                    console.log('Thiết bị không phản hồi trong 30s');
+                                    res_message = "Thiết bị không phản hồi trong 30s";
+                                    faile_6(res_message, sentResponse);
+                                    sentResponse = true;
+                                }, 30000); // 30s
+                                client.on('message', (topic, message) => {
+                                    const strmess = message.toString();
+                                    console.log(`Nhận được tin nhắn từ topic ${topic}: ${strmess}`);
+                                    if (strmess.trim() === "Write WIFI SSID Successfully") {
+                                        clearTimeout(timerId);
+                                        console.log(`Set thành công ssid:${data.ssid}/pass:${data.pwd}.`);
+                                        res_message = "Thành công";
+                                        success_6(data, res_message, sentResponse);
+                                        sentResponse = true;
+                                        console.log(updatedUser);
+                                    }
+                                });
+                            }
+                        })
+                    }
+                });
             } else {
                 console.log('Không tìm thấy deviceID');
                 res_message = "Không tìm thấy deviceID";
