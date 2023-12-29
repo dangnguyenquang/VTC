@@ -158,15 +158,15 @@ function informationAPI(deviceId) {
                                 "password": (latestData.payload.data.WIF === undefined) ? wifiInfo.wifiPASS : (latestData.payload.data.WIF.pass || "null"),
                                 "status": (latestData.payload.data.WIF === undefined) ? 1 : latestData.payload.data.WIF.stt
                             },
-                            "sim": [
-                                {
-                                    "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[0].num,
-                                    "status": (latestData.payload.data.SIM === undefined) ? 1 : latestData.payload.data.SIM[0].stt
-                                },
-                                {
-                                    "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[1].num,
-                                    "status": (latestData.payload.data.SIM === undefined) ? 0 : latestData.payload.data.SIM[0].stt
-                                }],
+                            // "sim": [
+                            //     {
+                            //         "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[0].num,
+                            //         "status": (latestData.payload.data.SIM === undefined) ? 1 : latestData.payload.data.SIM[0].stt
+                            //     },
+                            //     {
+                            //         "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[1].num,
+                            //         "status": (latestData.payload.data.SIM === undefined) ? 0 : latestData.payload.data.SIM[0].stt
+                            //     }],
                             "LAN_state": (latestData.payload.data.LANstt || 0),
                             "charge_type": (latestData.payload.data.CHANGEtyp || 1),
                             "battery": 
