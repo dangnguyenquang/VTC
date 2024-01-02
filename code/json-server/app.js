@@ -602,7 +602,7 @@ server.post('/api/config', (req, res) => {
     // const { requestId, deviceId, action, data, sign } = req.body;
     // const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
-    // if (sign === check) {
+    if (data.ssid.length != 16 && data.pwd.length != 16 && data.ssid.length != 32 && data.pwd.length != 32) {
     DeviceInfo.findOneAndUpdate(
         { deviceID: deviceId.substring(2, 7) },
         { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
@@ -660,12 +660,12 @@ server.post('/api/config', (req, res) => {
             faile_6(res_message, sentResponse);
             sentResponse = true;
         });
-    // } 
-    // else {
-    //     res_message = "sign không hợp lệ";
-    //     faile_6(res_message, sentResponse);
-    //     sentResponse = true;
-    // }
+    } 
+    else {
+        res_message = "Không thành công";
+        faile_6(res_message, sentResponse);
+        sentResponse = true;
+    }
 });
 
 // ************************************************* //
