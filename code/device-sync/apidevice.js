@@ -50,7 +50,7 @@ DeviceInfo.find({})
 
         console.log(data);
         // const api_url = "http://eoc-api.vtctelecom.com.vn/api/message"; url cũ 
-        const api_url = "https://ialert.vnpt.vn/apivtc/conn/v1/api/device";
+        const api_url = "https://ialert.vnpt.vn/apivtc/conn/v1/device";
         sendMessageToAPI(data, api_url);
         mongoose.connection.close();
     })
