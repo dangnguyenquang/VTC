@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
+const mongoose = require('mongoose');
 
 const requestId = uuidv4().toUpperCase().replace(/-/g, '');
 const token = 'dg-fDVjn2UCCp0VlJB9IIj3eeDnTud-crV9DroTKRB4OCkxC9qzqxbfH-0uor604hu6hsStS_hQUmVnmzeMfJuI4QdXbsMF88CU6PzLmt0A=';
