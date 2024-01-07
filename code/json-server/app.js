@@ -581,7 +581,10 @@ server.post('/api/config', (req, res) => {
 
     var res_message;
     var sentResponse = false;
-    const { requestId, deviceId, action, data } = req.body;
+    var { requestId, deviceId, action, data } = req.body;   // đổi var -> const sau khi VTC sửa xong
+
+    deviceId = deviceId.substring(0, 2) + deviceId[2].toUpperCase() + deviceId.substring(3, );    // sẽ xóa sau khi bên VTC fix
+
     const topicToPublish = `device/${deviceId.substring(2, 7)}/cmd`;
     const topicToSubscribe = `server/${deviceId.substring(2, 7)}/data`;
 
