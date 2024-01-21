@@ -163,10 +163,11 @@ function informationAPI(deviceId) {
                                     "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[0].num,
                                     "status": (latestData.payload.data.SIM === undefined) ? 1 : latestData.payload.data.SIM[0].stt
                                 },
-                                {
-                                    "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[1].num,
-                                    "status": (latestData.payload.data.SIM === undefined) ? 0 : latestData.payload.data.SIM[0].stt
-                                }],
+                                // {
+                                //     "number": (latestData.payload.data.SIM === undefined) ? "0123556789" : latestData.payload.data.SIM[1].num,
+                                //     "status": (latestData.payload.data.SIM === undefined) ? 0 : latestData.payload.data.SIM[0].stt
+                                // }
+                            ],
                             "LAN_state": (latestData.payload.data.LANstt || 0),
                             "charge_type": (latestData.payload.data.CHANGEtyp || 1),
                             "battery": 
@@ -605,69 +606,124 @@ server.post('/api/config', (req, res) => {
     // const { requestId, deviceId, action, data, sign } = req.body;
     // const sign_check = `${requestId}${action}${deviceId}${ScretKey}`;
     // const check = crypto.createHash('sha256').update(sign_check).digest('hex');
-    if (data.ssid.length != 16 && data.pwd.length != 16 && data.ssid.length != 32 && data.pwd.length != 32) {
-    DeviceInfo.findOneAndUpdate(
-        { deviceID: deviceId.substring(2, 7) },
-        { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
-        { new: true }
-    )
-        .then(updatedUser => {
-            if (updatedUser) {
-                client.publish(topicToPublish, 'SERVERCMD_GOTOCFG_WIFI', (err) => {
-                    if (err) {
-                        console.error('Lỗi khi gửi tin nhắn:', err);
-                        res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
-                        faile_6(res_message, sentResponse);
-                        sentResponse = true;
-                    } else {
-                        console.log('SERVERCMD_GOTOCFG_WIFI thành công');
-                        client.publish(topicToPublish, `ssid:${data.ssid}/pass:${data.pwd}.`, (err) => {
-                            if (err) {
-                                console.error('Lỗi khi gửi tin nhắn:', err);
-                                res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
-                                faile_6(res_message, sentResponse);
-                                sentResponse = true;
-                            } else {
-                                timerId = setTimeout(() => {
-                                    console.log('Thiết bị không phản hồi trong 30s');
-                                    res_message = "Thiết bị không phản hồi trong 30s";
+    if (action == "wifi") {
+        if (data.ssid.length != 16 && data.pwd.length != 16 && data.ssid.length != 32 && data.pwd.length != 32) {
+        DeviceInfo.findOneAndUpdate(
+            { deviceID: deviceId.substring(2, 7) },
+            { $set: { wifiSSID: data.ssid, wifiPASS: data.pwd } },
+            { new: true }
+        )
+            .then(updatedUser => {
+                if (updatedUser) {
+                    client.publish(topicToPublish, 'SERVERCMD_GOTOCFG_WIFI', (err) => {
+                        if (err) {
+                            console.error('Lỗi khi gửi tin nhắn:', err);
+                            res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
+                            faile_6(res_message, sentResponse);
+                            sentResponse = true;
+                        } else {
+                            console.log('SERVERCMD_GOTOCFG_WIFI thành công');
+                            client.publish(topicToPublish, `ssid:${data.ssid}/pass:${data.pwd}.`, (err) => {
+                                if (err) {
+                                    console.error('Lỗi khi gửi tin nhắn:', err);
+                                    res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
                                     faile_6(res_message, sentResponse);
                                     sentResponse = true;
-                                }, 30000); // 30s
-                                client.on('message', (topic, message) => {
-                                    const strmess = message.toString();
-                                    console.log(`Nhận được tin nhắn từ topic ${topic}: ${strmess}`);
-                                    if (strmess.trim() === "Write WIFI SSID Successfully") {
-                                        clearTimeout(timerId);
-                                        console.log(`Set thành công ssid:${data.ssid}/pass:${data.pwd}.`);
-                                        res_message = "Thành công";
-                                        success_6(data, res_message, sentResponse);
+                                } else {
+                                    timerId = setTimeout(() => {
+                                        console.log('Thiết bị không phản hồi trong 30s');
+                                        res_message = "Thiết bị không phản hồi trong 30s";
+                                        faile_6(res_message, sentResponse);
                                         sentResponse = true;
-                                        console.log(updatedUser);
-                                    }
-                                });
-                            }
-                        })
-                    }
-                });
-            } else {
-                console.log('Không tìm thấy deviceID');
-                res_message = "Không tìm thấy deviceID";
+                                    }, 30000); // 30s
+                                    client.on('message', (topic, message) => {
+                                        const strmess = message.toString();
+                                        console.log(`Nhận được tin nhắn từ topic ${topic}: ${strmess}`);
+                                        if (strmess.trim() === "Write WIFI SSID Successfully") {
+                                            clearTimeout(timerId);
+                                            console.log(`Set thành công ssid:${data.ssid}/pass:${data.pwd}.`);
+                                            res_message = "Thành công";
+                                            success_6(data, res_message, sentResponse);
+                                            sentResponse = true;
+                                            console.log(updatedUser);
+                                        }
+                                    });
+                                }
+                            })
+                        }
+                    });
+                } else {
+                    console.log('Không tìm thấy deviceID');
+                    res_message = "Không tìm thấy deviceID";
+                    faile_6(res_message, sentResponse);
+                    sentResponse = true;
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi cập nhật:', err);
+                res_message = err;
                 faile_6(res_message, sentResponse);
                 sentResponse = true;
-            }
-        })
-        .catch(error => {
-            console.error('Lỗi khi cập nhật:', err);
-            res_message = err;
+            });
+        } 
+        else {
+            res_message = "Không thành công";
             faile_6(res_message, sentResponse);
             sentResponse = true;
-        });
-    } 
-    else {
-        res_message = "Không thành công";
-        faile_6(res_message, sentResponse);
-        sentResponse = true;
+        }
+    } else if (action == "priority") {
+        DeviceInfo.findOne({ deviceID: deviceId.substring(2, 7) }) // Truy vấn dựa vào deviceId
+            .then((device) => {
+                if (device) {
+                    client.publish(topicToPublish, 'SERVERCMD_GOTOCFG_PRIORITY', (err) => {
+                        if (err) {
+                            console.error('Lỗi khi gửi tin nhắn:', err);
+                            res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
+                            faile_6(res_message, sentResponse);
+                            sentResponse = true;
+                        } else {
+                            console.log('SERVERCMD_GOTOCFG_PRIORITY thành công');
+                            client.publish(topicToPublish, `Config Priority: ${data[0]} ${data[1]} ${data[2]}`, (err) => {
+                                if (err) {
+                                    console.error('Lỗi khi gửi tin nhắn:', err);
+                                    res_message = "Lỗi khi gửi tin nhắn cho mqtt broker";
+                                    faile_6(res_message, sentResponse);
+                                    sentResponse = true;
+                                } else {
+                                    timerId = setTimeout(() => {
+                                        console.log('Thiết bị không phản hồi trong 30s');
+                                        res_message = "Thiết bị không phản hồi trong 30s";
+                                        faile_6(res_message, sentResponse);
+                                        sentResponse = true;
+                                    }, 30000); // 30s
+                                    client.on('message', (topic, message) => {
+                                        const strmess = message.toString();
+                                        console.log(`Nhận được tin nhắn từ topic ${topic}: ${strmess}`);
+                                        if (strmess.trim().substring(0, 32) === "<!> Successfully Config Priority") {
+                                            clearTimeout(timerId);
+                                            console.log(`Set thành công Config Priority: ${data[0]} ${data[1]} ${data[2]}`);
+                                            res_message = "Thành công";
+                                            success_6(data, res_message, sentResponse);
+                                            sentResponse = true;
+                                        }
+                                    });
+                                }
+                            })
+                        }
+                    });
+                } else {
+                    console.log('Không tìm thấy deviceID');
+                    res_message = "Không tìm thấy deviceID";
+                    faile_6(res_message, sentResponse);
+                    sentResponse = true;
+                }
+                })
+            .catch((err) => {
+                console.log(err);
+                res_message = "Không thành công: " + err;
+                faile_6(res_message, sentResponse);
+                sentResponse = true;
+            });
     }
 });
 
