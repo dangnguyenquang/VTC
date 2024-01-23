@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
+const moment = require('moment-timezone');
 
 const mqtt_broker = "iot-vtc.nichietsuvn.com";
 const mqtt_port = 1887;
@@ -160,19 +161,19 @@ function fetchDataAndSendAPI(deviceId) {
     .then((interval) => {
       const adjustedInterval = interval * 1000 * 3;
 
-      const now = new Date();
-      const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
       const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-
+      
       DeviceData.aggregate([
         { $match: { id: deviceId } },
         { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
         { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
       ])
-        .then(result => {
-          if (result.length > 0) {
-            const latestData = result[0];
-            const type = latestData.payload.type;
+      .then(result => {
+        if (result.length > 0) {
+          var now = new Date();
+          const latestData = result[0];
+          const type = latestData.payload.type;
+          const formattedDate = moment().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
               if (type === "emergency") {
                 if (latestData.payload.data.kind === 1) {
@@ -221,17 +222,7 @@ function fetchDataAndSendAPI(deviceId) {
 }
 
 setInterval(() => {
-  const now = new Date();
-
-  const year = now.getFullYear(); // Lấy năm (yyyy)
-  const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Lấy tháng (MM)
-  const day = now.getDate().toString().padStart(2, '0'); // Lấy ngày (dd)
-
-  const hour = now.getHours().toString().padStart(2, '0'); // Lấy giờ (hh)
-  const minute = now.getMinutes().toString().padStart(2, '0'); // Lấy phút (mm)
-  const second = now.getSeconds().toString().padStart(2, '0'); // Lấy giây (ss)
-
-  const formattedDateTime = `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+  const formattedDateTime = moment().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
   console.log("===============================", formattedDateTime, "===============================",);
   if (deviceIds.length === 0) {
     console.log("Không tồn tại thiết bị nào trong database");
@@ -276,8 +267,7 @@ client.on('message', (topic, message) => {
   }
 
   console.log(`Nhận được tin nhắn từ topic ${topic} có loại: ${type}`); 
-  const now = new Date();
-  const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+  const formattedDate = moment().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');  
   const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
 
   var deviceId = `n_${(topic.substring(7, 12))}`;

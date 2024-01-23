@@ -11,6 +11,7 @@ const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
 const db = require('../config/database');
 const { Stream } = require('stream');
+const momentTimezome = require('moment-timezone');
 
 const ScretKey = "2adac38d834c4807b798bc844503c249"; // VTC cung cấp
 const mqtt_broker = "iot-vtc.nichietsuvn.com";
@@ -68,16 +69,17 @@ function fetchDataAndSendAPI(deviceId) {
         .then((interval) => {
             const adjustedInterval = interval * 1000 * 3;
 
-            const now = new Date();
-            const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
             const requestId = uuidv4().toUpperCase().replace(/-/g, '');  // uniqueidentifier
-
+            
             DeviceData.aggregate([
                 { $match: { id: deviceId } },
                 { $sort: { timestamp: -1 } }, // Sắp xếp theo thời gian giảm dần
                 { $limit: 1 } // Giới hạn kết quả chỉ lấy 1 tài liệu
             ])
-                .then(result => {
+            .then(result => {
+                    var now = new Date();
+                    const formattedDate = momentTimezome().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
+                    
                     if (result.length > 0) {
                         const latestData = result[0];
                         if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
