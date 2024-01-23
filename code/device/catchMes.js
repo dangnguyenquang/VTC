@@ -65,7 +65,8 @@ function subscribeTopics() {
   if (topics.length === 0) {
     console.log("Danh sách cách topics để subscribe rỗng");
   } else {
-    client.subscribe(topics, { qos: 0, rh: 0 }, (err) => {
+    // client.subscribe(topics, { qos: 0, rh: 0 }, (err) => {
+    client.subscribe(topics, (err) => {
       if (err) {
         console.error("Lỗi khi subscribe các topic:", err);
       } else {

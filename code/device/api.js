@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
+const DeviceLogger = require('../models/deviceLogger');
 const moment = require('moment-timezone');
 
 const mqtt_broker = "iot-vtc.nichietsuvn.com";
@@ -94,7 +95,8 @@ function subscribeTopics() {
   if (topics.length === 0) {
     console.log('Danh sách cách topics để subscribe rỗng');
   } else {
-    client.subscribe(topics, { qos: 0, rh: 0 }, (err) => {
+    // client.subscribe(topics, { qos: 0, rh: 0 }, (err) => {
+    client.subscribe(topics, (err) => {
       if (err) {
         console.error('Lỗi khi subscribe các topic:', err);
       } else {
@@ -155,6 +157,16 @@ function getIntervalWithDeviceId(deviceId) {
     });
 }
 
+function logger(loggerData) {
+  const newDeviceLogger = new DeviceLogger({
+    id: loggerData.id,
+    loggerData: loggerData,
+    timestamp: new Date() // Thời gian hiện tại
+  });
+
+  newDeviceLogger.save()
+}
+
 function fetchDataAndSendAPI(deviceId) {
   var state, kind;
   getIntervalWithDeviceId(deviceId)
@@ -176,6 +188,8 @@ function fetchDataAndSendAPI(deviceId) {
           const formattedDate = moment().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
               if (type === "emergency") {
+                logger(latestData);
+
                 if (latestData.payload.data.kind === 1) {
                   kind = 1;
                   state = 1;
@@ -262,7 +276,6 @@ client.on('message', (topic, message) => {
   if (message.toString().substring(0, 1) !== "{") 
     type = "undefined";
   else {
-    console.log(message.toString());
     strmess = JSON.parse(message.toString());
     type = strmess.type;
   }
