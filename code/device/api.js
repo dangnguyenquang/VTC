@@ -128,7 +128,6 @@ function updateTopics(newTopics) {
 // **************************************************************** //
 // Hàm gửi API
 function sendMessageToAPI(data, api_url) {
-  console.log(data);
   axios.post(api_url, data, config)
     .then((response) => {
       // console.log(`${JSON.stringify(data)}`)
