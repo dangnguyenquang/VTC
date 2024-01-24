@@ -350,7 +350,7 @@ server.get('/api/deviceinfo', (req, res) => {
 
     client.on('connect', () => {
         console.log("Kết nối thành công tới MQTT broker");
-        client.subscribe(topicToSubscribe);
+        client.subscribe(topicToSubscribe, { qos: 0, rh: 0 });
     });
 
     client.on('error', (error) => {
@@ -598,7 +598,7 @@ server.post('/api/config', (req, res) => {
 
     client.on('connect', () => {
         console.log("Kết nối thành công tới MQTT broker");
-        client.subscribe(topicToSubscribe);
+        client.subscribe(topicToSubscribe, { qos: 0, rh: 0 });
     });
 
     client.on('error', (error) => {

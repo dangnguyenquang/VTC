@@ -94,7 +94,7 @@ function subscribeTopics() {
   if (topics.length === 0) {
     console.log('Danh sách cách topics để subscribe rỗng');
   } else {
-    client.subscribe(topics, (err) => {
+    client.subscribe(topics, { qos: 0, rh: 0 }, (err) => {
       if (err) {
         console.error('Lỗi khi subscribe các topic:', err);
       } else {
@@ -128,6 +128,7 @@ function updateTopics(newTopics) {
 // **************************************************************** //
 // Hàm gửi API
 function sendMessageToAPI(data, api_url) {
+  console.log(data);
   axios.post(api_url, data, config)
     .then((response) => {
       // console.log(`${JSON.stringify(data)}`)
@@ -262,6 +263,7 @@ client.on('message', (topic, message) => {
   if (message.toString().substring(0, 1) !== "{") 
     type = "undefined";
   else {
+    console.log(message.toString());
     strmess = JSON.parse(message.toString());
     type = strmess.type;
   }
