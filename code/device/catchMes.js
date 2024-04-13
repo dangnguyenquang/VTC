@@ -2,6 +2,7 @@ const mqtt = require("mqtt");
 const db = require('../config/database');
 const DeviceInfo = require('../models/deviceInfo');
 const DeviceData = require('../models/deviceData');
+const BatteryPercent = require('../models/batteryPercent')
 
 const mqtt_broker = "iot-vtc.nichietsuvn.com";
 const mqtt_port = 1887;
@@ -36,6 +37,56 @@ changeStream.on("change", (change) => {
       console.log(err);
     });
 });
+
+function updateStartTimeById(deviceId, currentTime, CHANGEtyp) {
+  return BatteryPercent.findOneAndUpdate(
+    { id: deviceId }, // Điều kiện tìm kiếm dựa vào id
+    { $set: { startTime: currentTime, CHANGEtyp: CHANGEtyp} }, // Giá trị mới của trường timeStart
+    { new: true } // Tùy chọn để trả về bản ghi đã được cập nhật
+  )
+  .then((result) => {
+    if (result) {
+      console.log('Updated document:', result);
+      return result;
+    } else {
+      throw new Error('Document not found');
+    }
+  })
+  .catch((error) => {
+    console.error('Error updating document:', error);
+    throw error;
+  });
+}
+
+// Lấy giá trị và trạng thái của pin
+function getValueAndBatteryState(deviceId) {
+  return BatteryPercent.findOne({ id: deviceId }) // Truy vấn dựa vào deviceId
+    .then((device) => {
+      if (device) {
+        return device.CHANGEtyp;
+      } else {
+        throw new Error('Device not found'); // Ném lỗi nếu không tìm thấy device
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      throw err; // Ném lỗi để xử lý ở phần gọi hàm getIntervalWithDeviceId
+    });
+}
+
+function setValueAndBatteryState(deviceId, payload) {
+  getValueAndBatteryState(deviceId)
+    .then((batteryData) => {
+      if (payload.type === "inf" && batteryData != payload.data.CHANGEtyp) {
+        const currentTime = new Date();
+        updateStartTimeById(deviceId, currentTime, payload.data.CHANGEtyp);
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+}
+
 
 // In ra các deviceId hiện có
 DeviceInfo.find({})
@@ -109,6 +160,8 @@ client.on('message', (topic, message) => {
         timestamp: new Date() // Thời gian hiện tại
       });
     
+      setValueAndBatteryState(topic.substring(7, 12), data);
+
       // Lưu bản ghi mới vào cơ sở dữ liệu
       newDeviceData.save()
         .then(() => {
