@@ -134,6 +134,7 @@ function sendMessageToAPI(data, api_url) {
     .then((response) => {
       // console.log(`${JSON.stringify(data)}`)
       console.log(data.deviceId, `- Đã gửi tin nhắn tới API thành công (message: ${JSON.stringify(response.data.message)}, kind: ${data.kind}, state: ${data.state})`);
+      logger(data);
     })
     .catch((error) => {
       console.error("Lỗi khi gửi tin nhắn tới API", error);
@@ -159,7 +160,7 @@ function getIntervalWithDeviceId(deviceId) {
 
 function logger(loggerData) {
   const newDeviceLogger = new DeviceLogger({
-    id: loggerData.id,
+    id: loggerData.deviceId,
     loggerData: loggerData,
     timestamp: new Date() // Thời gian hiện tại
   });
@@ -188,8 +189,6 @@ function fetchDataAndSendAPI(deviceId) {
           const formattedDate = moment().tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
             if (now.getTime() - latestData.timestamp.getTime() <= adjustedInterval) {
               if (type === "emergency") {
-                logger(latestData);
-
                 if (latestData.payload.data.kind === 1) {
                   kind = 1;
                   state = 1;
